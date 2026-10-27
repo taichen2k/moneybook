@@ -483,3 +483,4 @@ input.fv{display:block}
 .mp-g button.on{color:var(--exp);background:var(--accent-soft)}
 @media (max-width:400px){.lnav button{width:24px}.lnav .mlab{font-size:19px;padding:2px 2px;gap:2px}.hic button{width:31px}.hic svg{width:20px;height:20px}.lhead{gap:4px}}
 .tabs button,.subtabs button,.lnav button,.hic button,.fab{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.lock.bye{opacity:0;transition:opacity .3s ease}

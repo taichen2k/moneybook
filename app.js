@@ -51,7 +51,10 @@ function markActive(){try{sessionStorage.setItem('moneybook.activeAt',String(Dat
 function recentlyActive(){try{const a=+sessionStorage.getItem('moneybook.activeAt')||0;const lm=+(localStorage.getItem('moneybook.lockMin')??1);return a&&Date.now()-a<Math.max(lm*60000,15000);}catch(e){return false;}}
 // 내용이 같으면 다시 그리지 않아요 (누르는 도중 버튼이 바뀌어 터치가 씹히는 문제 방지)
 function setHtml(el,h){if(el._h!==h){el.innerHTML=h;el._h=h;}}
-function renderLock(){const r=$('#lockRoot');const on=lockOn();document.documentElement.classList.toggle('locked',on);if(!on){r.innerHTML='';return;}
+function renderLock(){const r=$('#lockRoot');const on=lockOn();document.documentElement.classList.toggle('locked',on);
+  // 풀릴 때 잠금 화면을 0.35초 동안 투명하게 남겨 둬서, 마지막 숫자를 누른 손가락이 뒤 화면 버튼을 잘못 누르지 않게 해요
+  if(!on){const l=r.querySelector('.lock');if(l&&!l.classList.contains('bye')){l.classList.add('bye');setTimeout(()=>{if(!lockOn())r.innerHTML='';},350);}else if(!l)r.innerHTML='';return;}
+  if(r.querySelector('.lock.bye'))r.innerHTML='';
   if(r.querySelector('.lock')){updLock();return;}
   r.innerHTML=`<div class="lock" role="dialog" aria-label="비밀번호 입력"><img src="logo-mark.svg" alt="" width="72" height="72" style="border-radius:18px;box-shadow:0 4px 14px rgba(0,0,0,.18)"><h2>티끌모아</h2><div>비밀번호 4자리를 입력하세요</div><div id="lockDots">${dotsHtml(S.pinIn.length,!!S.pinErr)}</div><div class="perr" id="lockErr">${esc(S.pinErr)}</div>${padHtml()}<button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div>`;}
 // 틀린 횟수는 기기에 기억해서 새로고침해도 초기화되지 않아요. 5번부터 30초, 60초… 기다려야 해요.
@@ -121,7 +124,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=24; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=25; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -743,7 +746,9 @@ const ACT={
     else{S.pinDraft={step:1,first:'',cur:'',err:'두 번 입력한 번호가 달라요. 처음부터 다시 입력하세요.'};renderSheet();}}}
 };
 const FAST=new Set(['pinKey','kp']);
-document.addEventListener('pointerdown',e=>{if(e.button>0)return;const el=e.target.closest('[data-act]');if(!el||!FAST.has(el.dataset.act))return;e.preventDefault();
+// 숫자 키는 닿는 순간 입력돼요. 그 손가락을 뗄 때 생기는 클릭이 다른 버튼에 떨어지지 않게 잠깐 막아요
+let ghostUntil=0;document.addEventListener('click',e=>{if(Date.now()<ghostUntil&&!(e.target.closest&&e.target.closest('[data-act]')&&FAST.has(e.target.closest('[data-act]').dataset.act))){e.preventDefault();e.stopImmediatePropagation();}},true);
+document.addEventListener('pointerdown',e=>{if(e.button>0)return;const el=e.target.closest('[data-act]');if(!el||!FAST.has(el.dataset.act))return;e.preventDefault();ghostUntil=Date.now()+350;
   el.classList.add('press');setTimeout(()=>el.classList.remove('press'),130);try{navigator.vibrate&&navigator.vibrate(8);}catch(x){}ACT[el.dataset.act](el,e);});
 document.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(!el)return;if(FAST.has(el.dataset.act))return;if(el.tagName==='INPUT'&&el.type==='checkbox'&&e.type==='click'){ACT[el.dataset.act]&&ACT[el.dataset.act](el,e);return;}const f=ACT[el.dataset.act];if(f)f(el,e);});
 document.addEventListener('input',e=>{const t=e.target;

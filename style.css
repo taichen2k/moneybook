@@ -408,3 +408,6 @@ textarea.in-t{min-height:130px;resize:vertical;font-size:14px}
 
 .btn.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--surface);border:1px solid var(--line);font-size:17px;padding:14px}
 .btn.gbtn:disabled{opacity:.6}
+
+.foot{text-align:center;color:var(--muted);font-size:12.5px;line-height:1.6;padding:18px 8px 8px}
+.foot p{margin:0}

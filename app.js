@@ -84,6 +84,8 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
+const APP_VERSION='1.0.0';
+function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
 function fbErrMsg(e){const c=(e&&e.code)||'';if(c.includes('permission-denied')){GH.denied=true;return '이 구글 계정은 이 가계부에 들어올 수 없어요.';}
@@ -300,7 +302,7 @@ function moreHtml(){const st=S.settings;const bt=st.budget&&st.budget.total;
   <div class="card help"><h3>여러 휴대폰에서 같이 쓰기</h3>
   <p><b>내 폰·PC 여러 대</b> — 각 기기에서 이 주소를 열고 같은 구글 계정으로 로그인하면 끝이에요. 한쪽에서 입력하면 다른 기기에 바로 나타나요.</p>
   <p><b>가족과 함께</b> — 가족 구글 계정을 허용 목록에 넣으면 같은 장부에 함께 적을 수 있어요. 필요하면 Claude에게 부탁하세요.</p>
-  <p><b>앱처럼 쓰기</b> — 휴대폰 브라우저에서 링크를 연 뒤 ‘홈 화면에 추가’를 누르면 아이콘으로 바로 열려요.</p></div>`;}
+  <p><b>앱처럼 쓰기</b> — 휴대폰 브라우저에서 링크를 연 뒤 ‘홈 화면에 추가’를 누르면 아이콘으로 바로 열려요.</p></div>${footHtml()}`;}
 
 /* ---------- sheets ---------- */
 function openSheet(k){S.sheet=k;renderSheet();}
@@ -670,7 +672,7 @@ function setupHtml(){if(S.fbMissing)return `<div class="notice"><b>로그인 도
   return instBanner()+`<div class="setup-logo"><img src="logo.png" alt="티끌모아"></div><div class="card setup"><h3>구글로 로그인</h3>
   <p class="muted">로그인하면 휴대폰과 PC 어디서든 같은 가계부를 써요. 기기마다 처음 한 번만 하면 돼요.</p>
   <button class="btn gbtn wide2" data-act="login" ${S.loginBusy?'disabled':''}>${GICON}<span>${S.loginBusy?'로그인 중…':'구글 계정으로 로그인'}</span></button>
-  <div class="err">${esc(S.loginErr||'')}</div></div>`;}
+  <div class="err">${esc(S.loginErr||'')}</div></div>`+footHtml();}
 function deniedHtml(){return `<div class="card setup"><h3>들어올 수 없는 계정이에요</h3><p class="muted"><b>${esc((S.user&&S.user.email)||'')}</b> 계정은 이 가계부에 허용되지 않았어요. 가계부 주인 계정으로 다시 로그인해 주세요.</p>
   <button class="btn pri wide2" data-act="logoutNow">다른 계정으로 로그인</button></div>`;}
 async function fullSnapshot(){const ms=allMonths();await ensureMonths(ms,true);const snap={app:'moneybook',v:1,at:new Date().toISOString(),settings:S.settings,tx:{},memo:[]};

@@ -405,3 +405,6 @@ textarea.in-t{min-height:130px;resize:vertical;font-size:14px}
 .ibar .btn{flex:none;padding:9px 16px}
 .ibar .x{width:32px;height:32px}
 @media (min-width:1000px){.app{max-width:760px}.tabs .in{max-width:760px}.fab{right:calc(50% - 380px + 18px)}}
+
+.btn.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--surface);border:1px solid var(--line);font-size:17px;padding:14px}
+.btn.gbtn:disabled{opacity:.6}

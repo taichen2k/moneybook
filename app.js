@@ -20,6 +20,7 @@ const S={db:null,noDb:false,canWrite:true,settings:clone(DEFAULTS),settingsReady
   sub:'daily',openMonth:'',memo:null,overview:false,locked:false,unlockedOnce:false,pinIn:'',pinErr:'',pinDraft:null,hiddenAt:0,
   sp:'month',spWeek:'',spYear:0,rFrom:'',rTo:'',statCat:''};
 // 앱을 새로 열면 늘 가계부(일일) 화면으로 시작. 방금 쓰다가 새로고침된 경우만 보던 화면 유지
+S.freshOpen=!recentlyActive();
 if(recentlyActive())try{const t=localStorage.getItem('moneybook.tab');if(t)S.tab=t;const u=localStorage.getItem('moneybook.sub');if(u)S.sub=u;}catch(e){}
 if(S.tab==='cal'){S.tab='list';S.sub='cal';}if(!['list','stat','asset','more'].includes(S.tab))S.tab='list';
 
@@ -37,7 +38,8 @@ function addDays(s,n){const [y,m,d]=s.split('-').map(Number);return ymd(new Date
 function monthsBetween(a,b){const out=[];let l=a.slice(0,7);const e=b.slice(0,7);while(l<=e&&out.length<240){out.push(l);l=shiftLabel(l,1);}return out;}
 function mkPeriod(st,en){return {start:st,end:en,last:addDays(en,-1),months:monthsBetween(st,addDays(en,-1))};}
 function subsOf(type,cat){return ((S.settings.subs||{})[type]||{})[cat]||[];}
-function statPeriod(){if(S.sp==='week'){const a=S.spWeek||today();const st=addDays(a,-dowOf(a));return mkPeriod(st,addDays(st,7));}
+const wOff=d=>(dowOf(d)-(S.settings.weekStart||0)+7)%7;
+function statPeriod(){if(S.sp==='week'){const a=S.spWeek||today();const st=addDays(a,-wOff(a));return mkPeriod(st,addDays(st,7));}
   if(S.sp==='year'){const y=S.spYear||+S.label.slice(0,4);return mkPeriod(period(y+'-01').start,period((y+1)+'-01').start);}
   if(S.sp==='range'){const p=period(S.label);const f=S.rFrom||p.start;let t=S.rTo||p.last;if(t<f)t=f;return mkPeriod(f,addDays(t,1));}
   return period(S.label);}
@@ -50,7 +52,7 @@ const lockOn=()=>!!(S.locked&&(S.settings.pin||S.pinPending));
 function markActive(){try{sessionStorage.setItem('moneybook.activeAt',String(Date.now()));}catch(e){}}
 function recentlyActive(){try{const a=+sessionStorage.getItem('moneybook.activeAt')||0;const lm=+(localStorage.getItem('moneybook.lockMin')??1);return a&&Date.now()-a<Math.max(lm*60000,15000);}catch(e){return false;}}
 // 내용이 같으면 다시 그리지 않아요 (누르는 도중 버튼이 바뀌어 터치가 씹히는 문제 방지)
-function setHtml(el,h){if(el._h!==h){el.innerHTML=h;el._h=h;}}
+function setHtml(el,h){if(el._h!==h){el.innerHTML=h;el._h=h;}if(el.id==='top')el.hidden=!h;}
 function renderLock(){const r=$('#lockRoot');const on=lockOn();document.documentElement.classList.toggle('locked',on);
   // 풀릴 때 잠금 화면을 0.35초 동안 투명하게 남겨 둬서, 마지막 숫자를 누른 손가락이 뒤 화면 버튼을 잘못 누르지 않게 해요
   if(!on){const l=r.querySelector('.lock');if(l&&!l.classList.contains('bye')){l.classList.add('bye');setTimeout(()=>{if(!lockOn())r.innerHTML='';},350);}else if(!l)r.innerHTML='';return;}
@@ -80,7 +82,10 @@ function normTx(t,ym){if(!t||typeof t!=='object')return null;const id=String(t.i
 function normalizeSettings(st){const d=clone(DEFAULTS);st=Object.assign(d,st||{});
   st.monthStart=Math.min(28,Math.max(1,parseInt(st.monthStart,10)||1));
   st.lockMin=[0,1,5,10,30].includes(Number(st.lockMin))?Number(st.lockMin):1;
-  st.accounts=(Array.isArray(st.accounts)?st.accounts:[]).filter(a=>a&&typeof a==='object'&&/^[\w-]{1,60}$/.test(String(a.id||''))).map(a=>({id:String(a.id),name:str(a.name,30)||'이름 없음',group:(g=>g==='신용카드'?'카드':GROUPS.includes(g)?g:'기타')(str(a.group,20)),hidden:!!a.hidden,memo:str(a.memo,200),phone:str(a.phone,40),smsKey:str(a.smsKey,60),app:str(a.app,40),pay:str(a.pay,60),cutDay:Math.min(31,Math.max(1,parseInt(a.cutDay,10)||1)),payDay:Math.min(31,Math.max(1,parseInt(a.payDay,10)||1)),init:isFinite(Number(a.init))?Number(a.init):0}));
+  const normAcc=a=>({id:String(a.id),name:str(a.name,30)||'이름 없음',group:(g=>g==='신용카드'?'카드':GROUPS.includes(g)?g:'기타')(str(a.group,20)),hidden:!!a.hidden,memo:str(a.memo,200),phone:str(a.phone,40),smsKey:str(a.smsKey,60),app:str(a.app,40),pay:str(a.pay,60),cutDay:Math.min(31,Math.max(1,parseInt(a.cutDay,10)||1)),payDay:Math.min(31,Math.max(1,parseInt(a.payDay,10)||1)),perf:Math.max(0,Number(a.perf)||0),init:isFinite(Number(a.init))?Number(a.init):0});
+  st.accounts=(Array.isArray(st.accounts)?st.accounts:[]).filter(a=>a&&typeof a==='object'&&/^[\w-]{1,60}$/.test(String(a.id||''))).map(normAcc);
+  st.deleted=(Array.isArray(st.deleted)?st.deleted:[]).filter(a=>a&&typeof a==='object'&&/^[\w-]{1,60}$/.test(String(a.id||''))).map(a=>Object.assign(normAcc(a),{perf:Number(a.perf)||0}));
+  st.weekStart=st.weekStart===1?1:0;st.firstSub=st.firstSub==='cal'?'cal':'daily';
   if(!st.accounts.length)st.accounts=clone(DEFAULTS.accounts||[]);
   const cats={};for(const ty of ['exp','inc']){const l=((st.cats||{})[ty]);cats[ty]=uniq((Array.isArray(l)?l:[]).filter(okName).map(x=>x.trim().slice(0,20)));if(!cats[ty].length)cats[ty]=clone(DEFAULTS.cats[ty]);}st.cats=cats;
   st.recurring=(Array.isArray(st.recurring)?st.recurring:[]).filter(r=>r&&typeof r==='object'&&isFinite(Number(r.amount))&&Number(r.amount)>0).map(r=>Object.assign({},r,{id:str(r.id,60)||newId(),type:okType(r.type),day:Math.min(31,Math.max(1,parseInt(r.day,10)||1)),amount:Number(r.amount),done:(Array.isArray(r.done)?r.done:[]).filter(okYm)}));
@@ -95,7 +100,7 @@ function period(l){const [y,m]=l.split('-').map(Number);const s=S.settings.month
   const st=new Date(y,m-1,s),en=new Date(y,m,s),last=new Date(y,m,s-1);
   return {start:ymd(st),end:ymd(en),last:ymd(last),months:uniq([ymd(st).slice(0,7),ymd(last).slice(0,7)])};}
 function catColor(type,name){const list=(S.settings.cats[type]||[]);let i=list.indexOf(name);if(i<0){i=0;for(const c of String(name))i+=c.charCodeAt(0);}return COLORS[(i+(type==='inc'?5:0))%COLORS.length];}
-function accName(id){const a=S.settings.accounts.find(a=>a.id===id);return a?a.name:'(삭제된 자산)';}
+function accName(id){const a=S.settings.accounts.find(a=>a.id===id)||(S.settings.deleted||[]).find(a=>a.id===id);return a?a.name:'(삭제된 자산)';}
 function txOf(ym){return S.live[ym]||S.cache[ym]||[];}
 function txIn(p){return p.months.flatMap(txOf).filter(t=>t.date>=p.start&&t.date<p.end);}
 function totals(list){let inc=0,exp=0;for(const t of list){if(t.type==='inc')inc+=t.amount;else if(t.type==='exp')exp+=t.amount;}return {inc,exp,net:inc-exp};}
@@ -124,7 +129,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=28; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=29; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -155,7 +160,7 @@ function subscribePeriod(){S.unsubs.forEach(u=>u());S.unsubs=[];S.live={};S.load
       if(!S.loaded){got++;if(got>=p.months.length)S.loaded=true;}
       render();
     },e=>{S.sync='off';render();});S.unsubs.push(u);});}
-async function ensureMonths(list,force){const need=list.filter(ym=>!S.live[ym]&&(force||!S.cache[ym])&&!S.fetching.has(ym));
+async function ensureMonths(list,force){if(!S.settingsReady)return [];const need=list.filter(ym=>!S.live[ym]&&(force||!S.cache[ym])&&!S.fetching.has(ym));
   if(!need.length)return [];need.forEach(m=>S.fetching.add(m));const fail=[];
   await Promise.all(need.map(async ym=>{try{if(!S.settings.months[ym]){S.cache[ym]=[];return;}const snap=await S.db.collection('tx_'+ym).get();S.cache[ym]=snap.docs.map(d=>Object.assign({id:d.id},d.data()));}catch(e){fail.push(ym);S.cache[ym]=S.cache[ym]||[];}finally{S.fetching.delete(ym);}}));
   render();return fail;}
@@ -180,7 +185,7 @@ const ICONS={list:'<svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8
   more:'<svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18" cy="12" r="1.3"/></svg>'};
 const TABS=[['list','가계부'],['stat','통계'],['asset','자산'],['more','더보기']];
 const SUBS=[['daily','일일'],['cal','달력'],['month','월별'],['settle','결산'],['memo','메모']];
-const HICON={sms:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
+const HICON={chart:'<svg viewBox="0 0 24 24"><path d="M4 20h16M7 17v-5M11 17V8M15 17v-7M19 17V5"/></svg>',list:'<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h1M4 12h1M4 18h1"/></svg>',pen:'<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4"/></svg>',sms:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
   fav:'<svg viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.8-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1-4.4-4.3 6.1-.8z"/></svg>',
   search:'<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>',
   set:'<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>'};
@@ -200,13 +205,15 @@ function renderTop(){const top=$('#top');const sc=!S.db?'off':GH.err?'off':S.db.
       <div class="hic"><span class="sync ${sc}" title="${st}"><i></i></span><button data-act="open" data-k="sms" aria-label="문자 붙여넣기">${HICON.sms}</button><button data-act="open" data-k="favorites" aria-label="자주 쓰는 내역">${HICON.fav}</button><button data-act="open" data-k="search" aria-label="검색">${HICON.search}</button><button data-act="open" data-k="filter" aria-label="필터" class="${filterOn()?'fact':''}">${HICON.set}</button></div></div>
     <div class="subtabs">${SUBS.map(([k,n])=>`<button data-act="sub" data-k="${k}" class="${S.sub===k?'on':''}">${n}</button>`).join('')}</div>${sumRow(t)}`;
     setHtml(top,h);return;}
-  h=`<div class="brand"><h1><img src="logo-mark.svg" alt="" width="28" height="28">티끌모아</h1><span class="sync ${sc}"><i></i>${st}</span></div>`;
+  if(S.db&&!S.needSetup&&S.tab==='asset'){h=S.av?avTop(sc,st):`<div class="ttl"><b>자산</b><span class="ttl-r"><button class="x" data-act="ovw" data-k="${S.overview?0:1}" aria-label="전체 통계">${HICON.chart}</button><button class="x dots" data-act="amenu" aria-label="자산 메뉴">⋮</button></span>${S.amenu?`<div class="amenu-ov" data-act="amenuClose"></div><div class="amenu"><button data-act="accNew">추가</button><button data-act="open" data-k="accHide">표시/숨김</button><button data-act="open" data-k="accDel">삭제</button><button data-act="open" data-k="accOrder">순서 변경</button></div>`:''}</div>`;setHtml(top,h);return;}
+  if(S.db&&!S.needSetup&&S.tab==='more'){h=`<div class="ttl"><b>${S.moreView==='set'?'<button class="x back2" data-act="moreBack" aria-label="뒤로">←</button>설정관리':'설정'}</b><span class="muted num" style="font-size:14px">v${APP_VERSION}</span></div>`;setHtml(top,h);return;}
+  if(!(S.db&&!S.needSetup&&S.tab==='stat'))h=`<div class="brand"><h1><img src="logo-mark.svg" alt="" width="28" height="28">티끌모아</h1><span class="sync ${sc}"><i></i>${st}</span></div>`;
   if(S.tab==='stat'){const sp=statPeriod();const t=totals(txIn(sp));const modes=[['week','주간'],['month','월간'],['year','연간'],['range','기간']];
-    let lab;if(S.sp==='month'){const [y,m]=S.label.split('-');lab=`<button class="mlab big" data-act="mpOpen" data-k="month">${y}년 ${+m}월<i>▾</i></button>`;}else if(S.sp==='year')lab=`<button class="mlab big" data-act="mpOpen" data-k="syear">${S.spYear||S.label.slice(0,4)}년<i>▾</i></button>`;
-    else if(S.sp==='week')lab=`<b class="num" style="font-size:19px">${dot2(sp.start)} ~ ${dot2(sp.last)}</b>`;
+    let lab;if(S.sp==='month'){const [y,m]=S.label.split('-');lab=`<button class="mlab" data-act="mpOpen" data-k="month">${y}년 ${+m}월<i>▾</i></button>`;}else if(S.sp==='year')lab=`<button class="mlab" data-act="mpOpen" data-k="syear">${S.spYear||S.label.slice(0,4)}년<i>▾</i></button>`;
+    else if(S.sp==='week')lab=`<b class="num wkl">${dot2(sp.start)} ~ ${dot2(sp.last)}</b>`;
     else lab=`<span class="rng"><input type="date" id="sp-from" class="in-t" value="${sp.start}" aria-label="시작일"> ~ <input type="date" id="sp-to" class="in-t" value="${sp.last}" aria-label="종료일"></span>`;
-    h+=`<div class="month spn">${S.sp==='range'?'':'<button data-act="sprev" aria-label="이전">‹</button>'}<div class="m">${lab}</div>${S.sp==='range'?'':'<button data-act="snext" aria-label="다음">›</button>'}
-      <select id="smode" class="mode" aria-label="통계 기간">${modes.map(([k,n])=>`<option value="${k}" ${S.sp===k?'selected':''}>${n}</option>`).join('')}</select></div>
+    h+=`<div class="snav"><div class="lnav">${S.sp==='range'?'':'<button data-act="sprev" aria-label="이전">‹</button>'}${lab}${S.sp==='range'?'':'<button data-act="snext" aria-label="다음">›</button>'}</div>
+      <span class="smw"><button class="smode" data-act="smOpen">${(modes.find(x=>x[0]===S.sp)||modes[1])[1]} <i>⌄</i></button>${S.smOpen?`<span class="amenu-ov" data-act="smClose"></span><span class="amenu sm">${modes.map(([k,n])=>`<button data-act="smPick" data-k="${k}">${n}</button>`).join('')}</span>`:''}</span></div>
     <div class="stabs num"><button data-act="stype" data-k="inc" class="${S.statType==='inc'?'on':''}">수입 <b>${won(t.inc)}원</b></button><button data-act="stype" data-k="exp" class="${S.statType==='exp'?'on':''}">지출 <b>${won(t.exp)}원</b></button></div>`;}
   setHtml(top,h);}
 
@@ -245,7 +252,7 @@ function renderView(){const v=$('#view');
   if(S.tab==='asset'){v.innerHTML=assetHtml();return;}
   if(S.tab==='more'){v.innerHTML=moreHtml();return;}}
 
-function calHtml(p){const st=addDays(p.start,-dowOf(p.start));const en=addDays(p.last,6-dowOf(p.last));
+function calHtml(p){const st=addDays(p.start,-wOff(p.start));const en=addDays(p.last,6-wOff(p.last));
   const ms=monthsBetween(st,en);const miss=ms.filter(ym=>!S.live[ym]&&!S.cache[ym]);if(miss.length)ensureMonths(miss);
   const by={};for(const t of ms.flatMap(txOf)){if(t.date<st||t.date>en||!passFilter(t))continue;const o=by[t.date]=by[t.date]||{inc:0,exp:0};if(t.type==='inc')o.inc+=t.amount;else if(t.type==='exp')o.exp+=t.amount;}
   const td=today();let cells='';let d=st;
@@ -253,15 +260,15 @@ function calHtml(p){const st=addDays(p.start,-dowOf(p.start));const en=addDays(p
     cells+=`<button class="cell ${out?'out':''} ${S.selDay===d?'sel':''}" data-act="pickDay" data-d="${d}"><span class="d num ${d===td?'today':''} ${w===0?'sun':w===6?'sat':''}">${lab}</span><span class="cv">${o&&o.inc?'<small class="inc num">'+won(o.inc)+'</small>':''}${o&&o.exp?'<small class="exp num">'+won(o.exp)+'</small>':''}</span></button>`;d=addDays(d,1);}
   let below='';if(S.selDay&&S.selDay>=st&&S.selDay<=en){const items=ms.flatMap(txOf).filter(t=>t.date===S.selDay&&passFilter(t));
     below=items.length?dayGroups(items):`<div class="empty" style="padding:28px 16px"><b>${+S.selDay.slice(5,7)}월 ${+S.selDay.slice(8)}일 내역이 없어요</b>+ 버튼을 누르면 이 날짜로 입력돼요.</div>`;}
-  return `<div class="cal"><div class="cal-h">${DOW.map(x=>'<span>'+x+'</span>').join('')}</div><div class="cal-g">${cells}</div></div>${below}`;}
+  return `<div class="cal"><div class="cal-h">${[0,1,2,3,4,5,6].map(i=>{const k=(i+(S.settings.weekStart||0))%7;return `<span class="${k===0?'sun':k===6?'sat':''}">${DOW[k]}</span>`;}).join('')}</div><div class="cal-g">${cells}</div></div>${below}`;}
 
 function monthlyHtml(){const y=+S.label.slice(0,4);const labels=[];for(let m=12;m>=1;m--)labels.push(y+'-'+pad(m));
   const ms=uniq(labels.flatMap(l=>period(l).months).concat(monthsBetween(addDays(period(y+'-01').start,-6),period(y+'-01').start)));
   const miss=ms.filter(ym=>!S.live[ym]&&!S.cache[ym]);if(miss.length){ensureMonths(miss);return '<div class="empty"><b>불러오는 중이에요</b></div>';}
   const all=ms.flatMap(txOf).filter(passFilter);const sumIn=(a,b)=>totals(all.filter(t=>t.date>=a&&t.date<b));const td=today();const cur=curLabel();
-  return '<div class="rows mrows">'+labels.map(l=>{const p=period(l);const t=sumIn(p.start,p.end);const open=S.openMonth===l;
+  return '<div class="rows mrows">'+labels.map(l=>{const p=period(l);const t=sumIn(p.start,p.end);const open=(S.openMonth||cur)===l;
     let h=`<button class="mrow ${open?'open':''}" data-act="omonth" data-k="${l}"><span class="ml"><b>${+l.slice(5)}월</b>${open||l===cur?`<small class="num">${p.start.slice(5).replace('-','.')} ~ ${p.last.slice(5).replace('-','.')}</small>`:''}</span><span class="num inc">${won(t.inc)}원</span><span class="mr num"><span class="exp">${won(t.exp)}원</span><small>${t.net<0?'-':''}${won(Math.abs(t.net))}원</small></span></button>`;
-    if(open){let ws=addDays(p.start,-dowOf(p.start));const wk=[];while(ws<p.end){wk.push(ws);ws=addDays(ws,7);}
+    if(open){let ws=addDays(p.start,-wOff(p.start));const wk=[];while(ws<p.end){wk.push(ws);ws=addDays(ws,7);}
       h+=wk.reverse().map(s=>{const e=addDays(s,7);const tt=sumIn(s,e);const now=td>=s&&td<e;
         return `<div class="wrow ${now?'now':''}"><span class="num">${s.slice(5).replace('-','.')} ~ ${addDays(e,-1).slice(5).replace('-','.')}</span><span class="num inc">${won(tt.inc)}원</span><span class="mr num"><span class="exp">${won(tt.exp)}원</span><small>${now?'합계 ':''}${tt.net<0?'-':''}${won(Math.abs(tt.net))}원</small></span></div>`;}).join('');}
     return h;}).join('')+'</div>';}
@@ -285,6 +292,18 @@ function memoHtml(){const ym=S.label;if(!S.memo||S.memo.ym!==ym){S.memo={ym,text
   return `<div class="card"><h3>${+ym.slice(5)}월 메모</h3><textarea class="in-t" id="memo-text" style="min-height:260px" placeholder="이번 달에 기억할 것을 적어두세요. 예: 자동차 보험 갱신, 경조사 일정">${esc(m.text)}</textarea>
   <div class="acts" style="margin-top:10px"><span class="muted" id="memo-st" style="flex:1;align-self:center">${m.text===m.saved?'저장됨':'저장 안 됨'}</span><button class="btn pri" style="flex:0 0 110px" data-act="memoSave" ${S.canWrite?'':'disabled'}>저장</button></div></div>`;}
 
+const PIE=['#ff6f61','#ff9a4d','#ffcb45','#f0e030','#bfe04a','#7fcf78','#4cc3b8','#4aa3e0','#7b8ae6','#b27be0','#e07bb4','#a8a29a'];
+function pieSvg(items,total){const W=360,H=300,cx=180,cy=150,r=92;let a0=-Math.PI/2;const segs=[],labs=[];
+  const pt=(a,rr)=>[cx+rr*Math.cos(a),cy+rr*Math.sin(a)];
+  for(const it of items){const f=total?it.v/total:0;const a1=a0+f*2*Math.PI;
+    if(f>=0.9999)segs.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${it.c}"/>`);
+    else if(f>0){const [x0,y0]=pt(a0,r),[x1,y1]=pt(a1,r);segs.push(`<path d="M${cx},${cy}L${x0.toFixed(1)},${y0.toFixed(1)}A${r},${r} 0 ${f>.5?1:0} 1 ${x1.toFixed(1)},${y1.toFixed(1)}Z" fill="${it.c}" stroke="var(--surface)" stroke-width="1.5"/>`);}
+    const am=(a0+a1)/2;const [ex,ey]=pt(am,r);const [mx,my]=pt(am,r+18);labs.push({it,f,ex,ey,mx,my,right:Math.cos(am)>=0});a0=a1;}
+  // 왼쪽·오른쪽 따로 위아래 겹치지 않게 벌려요
+  for(const side of [true,false]){const L=labs.filter(l=>l.right===side).sort((a,b)=>a.my-b.my);let last=-1e9;for(const l of L){l.ly=Math.max(l.my,last+34);last=l.ly;}const over=last-(H-14);if(over>0)for(const l of L)l.ly-=over;}
+  const lines=labs.map(l=>{const tx=l.right?Math.max(l.mx,cx+r+8):Math.min(l.mx,cx-r-8);const anc=l.right?'start':'end';const tx2=l.right?tx+6:tx-6;
+    return `<polyline points="${l.ex.toFixed(1)},${l.ey.toFixed(1)} ${l.mx.toFixed(1)},${l.ly.toFixed(1)} ${tx.toFixed(1)},${l.ly.toFixed(1)}" fill="none" stroke="${l.it.c}" stroke-width="1.2"/><text x="${tx2.toFixed(1)}" y="${(l.ly-2).toFixed(1)}" text-anchor="${anc}" class="pl">${esc(l.it.k)}</text><text x="${tx2.toFixed(1)}" y="${(l.ly+14).toFixed(1)}" text-anchor="${anc}" class="pp">${(l.f*100).toFixed(1)} %</text>`;}).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="분류별 비율">${segs.join('')}${lines}</svg>`;}
 function donut(items,total){const r=58,C=2*Math.PI*r;let acc=0;const segs=items.map(it=>{const len=total?it.v/total*C:0;const s=`<circle r="${r}" cx="80" cy="80" fill="none" stroke="${it.c}" stroke-width="22" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-acc}"/>`;acc+=len;return s;}).join('');
   return `<svg width="160" height="160" viewBox="0 0 160 160" role="img" aria-label="분류별 비율"><g transform="rotate(-90 80 80)"><circle r="${r}" cx="80" cy="80" fill="none" stroke="var(--sunk)" stroke-width="22"/>${segs}</g><text x="80" y="76" text-anchor="middle" font-size="12" fill="var(--muted)">${S.statType==='exp'?'총 지출':'총 수입'}</text><text x="80" y="96" text-anchor="middle" font-size="17" font-weight="700" fill="var(--ink)">${compact(total)}원</text></svg>`;}
 
@@ -294,7 +313,8 @@ function statHtml(){const sp=statPeriod();const miss=sp.months.filter(ym=>!S.liv
   const total=list.reduce((s,t)=>s+t.amount,0);const items=Object.keys(by).map(k=>({k,v:by[k],c:catColor(ty,k)})).sort((a,b)=>b.v-a.v);
   const bc=(S.sp==='month'&&ty==='exp'&&S.settings.budget&&S.settings.budget.cats)||{};
   if(!items.length)return `<div class="empty"><b>이 기간의 ${TYPE_NAME[ty]} 기록이 없어요</b>위에서 기간을 바꿔 보세요.</div>`;
-  let h=`<div class="card"><div class="donut">${donut(items,total)}</div></div><div class="rows" style="border-radius:var(--r)">`;
+  items.forEach((it,i)=>it.c=PIE[i%PIE.length]);
+  let h=`<div class="card pie">${pieSvg(items,total)}</div><div class="rows" style="border-radius:var(--r)">`;
   h+=items.map(it=>{const pct=it.v/total*100;const b=bc[it.k];const r=b?it.v/b:0;const open=S.statCat===it.k;
     let row=`<button class="lg2" data-act="scat" data-k="${esc(it.k)}" aria-expanded="${open}"><span class="pct num" style="background:${it.c}">${pct>=99.5?100:Math.round(pct)}%</span><span class="n">${esc(it.k)}</span><b class="num">${won(it.v)}원</b>
       ${b?`<span class="bud num">예산 ${won(b)} · ${r>1?'<span class="exp">'+won(it.v-b)+' 초과</span>':won(b-it.v)+' 남음'}<span class="bar ${r>1?'over':''}"><i style="width:${Math.min(100,r*100)}%"></i></span></span>`:''}</button>`;
@@ -329,8 +349,52 @@ function accBalances(){const accs=S.settings.accounts;const bal=Object.create(nu
   // 오늘 이후 날짜(할부 2/3회차처럼 미리 적어 둔 내역)는 그날이 되어야 잔액에 들어가요
   for(const ym of allMonths())for(const t of txOf(ym)){if(t.date>td)continue;if(t.type==='inc'){if(t.acc in bal)bal[t.acc]+=t.amount;}else if(t.type==='exp'){if(t.acc in bal)bal[t.acc]-=t.amount;}else{if(t.acc in bal)bal[t.acc]-=t.amount;if(t.to in bal)bal[t.to]+=t.amount;}}
   return bal;}
+/* ---------- 자산 상세 (편한가계부 자산 화면처럼 일일·월별·연별) ---------- */
+function accFlow(id){// 이 자산의 내역을 날짜순으로, 들어오면 +, 나가면 −
+  const a=S.settings.accounts.find(x=>x.id===id)||{};const out=[];
+  for(const ym of allMonths())for(const t of txOf(ym)){let v=0;if(t.type==='inc'&&t.acc===id)v=t.amount;else if(t.type==='exp'&&t.acc===id)v=-t.amount;else if(t.type==='trf'){if(t.acc===id)v-=t.amount;if(t.to===id)v+=t.amount;}if(v)out.push({t,v});}
+  out.sort((x,y)=>x.t.date.localeCompare(y.t.date)||(x.t.time||'').localeCompare(y.t.time||'')||(x.t.created||0)-(y.t.created||0));
+  let b=Number(a.init)||0;for(const o of out){b+=o.v;o.bal=b;}return {init:Number(a.init)||0,list:out};}
+function avRange(){const v=S.av;if(v.tab==='d'){const p=period(v.label);return {start:p.start,end:p.end,last:p.last};}const y=v.year;return {start:y+'-01-01',end:(y+1)+'-01-01',last:y+'-12-31'};}
+function avTop(){const v=S.av;const a=S.settings.accounts.find(x=>x.id===v.id)||{name:''};const [y,m]=v.label.split('-');
+  const nav=v.tab==='d'?`<span class="lnav"><button data-act="avShift" data-k="-1" aria-label="이전">‹</button><b class="num">${y}년 ${+m}월</b><button data-act="avShift" data-k="1" aria-label="다음">›</button></span>`:`<span class="lnav"><button data-act="avShift" data-k="-1" aria-label="이전">‹</button><b class="num">${v.year}년</b><button data-act="avShift" data-k="1" aria-label="다음">›</button></span>`;
+  return `<div class="ttl"><b><button class="x back2" data-act="avClose" aria-label="뒤로">←</button>${esc(a.name)}</b>${nav}</div><div class="subtabs three">${[['d','일일'],['m','월별'],['y','연별']].map(([k,n])=>`<button data-act="avTab" data-k="${k}" class="${v.tab===k?'on':''}">${n}</button>`).join('')}</div>`;}
+function avHtml(a){const v=S.av;const F=accFlow(a.id);const R=avRange();const isCard=a.group==='카드';
+  const inR=F.list.filter(o=>o.t.date>=R.start&&o.t.date<R.end);const inn=inR.reduce((x,o)=>x+(o.v>0?o.v:0),0),out=inR.reduce((x,o)=>x+(o.v<0?-o.v:0),0);
+  const balAt=d=>{let b=F.init;for(const o of F.list){if(o.t.date>d)break;b=o.bal;}return b;};const endBal=balAt(R.last);
+  const f2=d=>d.slice(2,4)+'.'+(+d.slice(5,7))+'.'+(+d.slice(8));
+  let h=`<div class="avh"><div><small class="muted">사용기간</small><b class="num">${f2(R.start)} ~ ${f2(R.last)}</b></div><span class="avi"><button class="x" data-act="avChart" aria-label="${v.chart?'목록 보기':'그래프 보기'}">${v.chart?HICON.list:HICON.chart}</button><button class="x" data-act="accOpen" data-k="${esc(a.id)}" aria-label="자산 정보 수정">${HICON.pen}</button></span></div>
+   <div class="net four num"><div><span>입금</span><b class="inc">${won(inn)}</b></div><div><span>출금</span><b class="exp">${won(out)}</b></div><div><span>합계</span><b>${inn-out<0?'-':''}${won(Math.abs(inn-out))}</b></div>${v.tab==='y'?'':`<div><span>누적잔액</span><b class="${endBal<0?'exp':'inc'}">${won(Math.abs(endBal))}</b></div>`}</div>`;
+  if(v.chart){// 실적 + 최근 6개 기간 잔액선·출금막대
+    if(isCard&&a.perf&&v.tab==='d'){const cy=cardCycles(a,R.last<today()?R.last:today());const used=F.list.filter(o=>o.v<0&&o.t.date>=cy.cur.start&&o.t.date<=cy.cur.end).reduce((x,o)=>x-o.v,0);
+      h+=`<div class="perf"><div><small class="muted">실적 (${f2(cy.cur.start)} ~ ${f2(cy.cur.end)})</small><b class="num">${won(a.perf)}원 ${used>=a.perf?'<span class="okc">✓</span>':''}</b></div><div><small class="muted">실적사용금액</small><b class="num">${won(used)}원</b></div><div><small class="muted">남은금액</small><b class="num muted">${used>=a.perf?'0':won(a.perf-used)}원</b></div></div>`;}
+    const per=[];if(v.tab==='d'){let l=v.label;for(let i=0;i<6;i++){per.unshift({lab:(+l.slice(5))+'월',r:period(l)});l=shiftLabel(l,-1);}}else{for(let i=5;i>=0;i--){const y=v.year-i;per.push({lab:String(y).slice(2)+'년',r:{start:y+'-01-01',end:(y+1)+'-01-01',last:y+'-12-31'}});}}
+    const pts=per.map(p=>({lab:p.lab,bal:balAt(p.r.last),out:F.list.filter(o=>o.v<0&&o.t.date>=p.r.start&&o.t.date<p.r.end).reduce((x,o)=>x-o.v,0),inn:F.list.filter(o=>o.v>0&&o.t.date>=p.r.start&&o.t.date<p.r.end).reduce((x,o)=>x+o.v,0)}));
+    h+=lineBars(pts);return h;}
+  if(v.tab==='d'){const rows=inR.slice().reverse();if(!rows.length)return h+`<div class="empty"><b>이 기간 내역이 없어요</b></div>`+avFab(a);
+    const by={};rows.forEach(o=>(by[o.t.date]=by[o.t.date]||[]).push(o));let first=true;
+    h+=Object.keys(by).sort().reverse().map(d=>{const its=by[d];const di=its.reduce((x,o)=>x+(o.v>0?o.v:0),0),dx=its.reduce((x,o)=>x+(o.v<0?-o.v:0),0);const w=dowOf(d);
+      return `<div class="dg"><div class="day"><span class="dn num">${+d.slice(8)}</span><span class="dw ${w===0?'sun':w===6?'sat':''}">${DOW[w]}요일</span><span class="dym num">${esc(d.slice(0,7).replace('-','.'))}</span><span class="ds num"><span class="inc">${won(di)}원</span><span class="exp">${won(dx)}원</span></span></div><div class="rows">${its.map(o=>{const t=o.t;const isT=t.type==='trf';const name=isT?'이체':(t.cat||'미분류');
+        const r=`<button class="row avr" data-act="edit" data-id="${esc(t.id)}" data-ym="${esc(t.date.slice(0,7))}"><span class="c">${esc(name)}</span><span class="t"><b>${esc(t.memo||t.note||(isT?accName(t.acc)+' → '+accName(t.to):''))}</b><small>${esc(isT?(o.v>0?accName(t.acc)+'에서':accName(t.to)+'으로'):accName(t.acc))}</small></span><span class="a num"><span class="${o.v<0?'exp':'inc'}">${won(Math.abs(o.v))}원</span><small>(${first?'누적잔액 ':''}${o.bal<0?'-':''}${won(Math.abs(o.bal))})</small></span></button>`;first=false;return r;}).join('')}</div></div>`;}).join('');
+    return h+avFab(a);}
+  // 월별: 그 해 12달, 연별: 해마다
+  const rowsP=[];if(v.tab==='m'){for(let m=12;m>=1;m--){const l=v.year+'-'+pad(m);const p=period(l);rowsP.push({lab:m+'월',r:p,k:l});}}else{const ys=uniq(F.list.map(o=>+o.t.date.slice(0,4))).sort((a,b)=>b-a);for(const y of ys)rowsP.push({lab:y+'년',r:{start:y+'-01-01',end:(y+1)+'-01-01',last:y+'-12-31'},ky:y});}
+  h+='<div class="rows mrows">'+rowsP.map(x=>{const L=F.list.filter(o=>o.t.date>=x.r.start&&o.t.date<x.r.end);const i2=L.reduce((s2,o)=>s2+(o.v>0?o.v:0),0),o2=L.reduce((s2,o)=>s2+(o.v<0?-o.v:0),0);const eb=balAt(x.r.last);
+    return `<button class="mrow" data-act="avGo" data-k="${x.k||''}" data-y="${x.ky||''}"><span class="ml"><b>${x.lab}</b></span><span class="num inc">${won(i2)}원</span><span class="mr num"><span class="exp">${won(o2)}원</span><small>${eb<0?'-':''}${won(Math.abs(eb))}원</small></span></button>`;}).join('')+'</div>';
+  return h+avFab(a);}
+function avFab(a){return a.group==='카드'?`<button class="fab2" data-act="avPay">결제</button>`:'';}
+function lineBars(pts){const W=360,H1=200,H2=150,padL=8,padR=8,n=pts.length;const xs=pts.map((_,i)=>padL+30+(W-padL-padR-60)*i/Math.max(1,n-1));
+  const bs=pts.map(p=>p.bal);let lo=Math.min(...bs),hi=Math.max(...bs);if(lo===hi){lo-=1;hi+=1;}const pad2=(hi-lo)*.15;lo-=pad2;hi+=pad2;const y=v=>18+(H1-48)*(1-(v-lo)/(hi-lo));
+  const fm=v=>{const a=Math.abs(v);return (v<0?'-':'')+(a>=1e8?(a/1e8).toFixed(1)+'억':a>=1e4?Math.round(a/1e4)+'만':won(a));};
+  let s1=`<svg viewBox="0 0 ${W} ${H1}" width="100%" class="lc"><rect x="0" y="0" width="${W}" height="${H1-30}" fill="var(--sunk)" rx="6"/>`;
+  for(let g=0;g<=3;g++){const gv=lo+(hi-lo)*g/3;const gy=y(gv);s1+=`<line x1="0" x2="${W}" y1="${gy}" y2="${gy}" stroke="var(--line)"/><text x="4" y="${gy-3}" class="ax">${fm(gv)}</text>`;}
+  s1+=`<polyline points="${xs.map((x,i)=>x.toFixed(1)+','+y(bs[i]).toFixed(1)).join(' ')}" fill="none" stroke="var(--exp)" stroke-width="2"/>`+xs.map((x,i)=>`<circle cx="${x.toFixed(1)}" cy="${y(bs[i]).toFixed(1)}" r="4.5" fill="var(--exp)"/><text x="${x.toFixed(1)}" y="${H1-14}" text-anchor="middle" class="ax2">${pts[i].lab}</text><text x="${x.toFixed(1)}" y="${H1}" text-anchor="middle" class="ax3">${bs[i]<0?'-':''}${won(Math.abs(bs[i]))}</text>`).join('')+'</svg>';
+  const mo=Math.max(1,...pts.map(p=>p.out));const yb=v=>16+(H2-64)*(1-v/mo);
+  let s2=`<svg viewBox="0 0 ${W} ${H2}" width="100%" class="lc"><rect x="0" y="0" width="${W}" height="${H2-48}" fill="var(--sunk)" rx="6"/>`+xs.map((x,i)=>`<rect x="${(x-9).toFixed(1)}" y="${yb(pts[i].out).toFixed(1)}" width="18" height="${(H2-48-yb(pts[i].out)).toFixed(1)}" fill="var(--exp)" opacity=".45"/><text x="${x.toFixed(1)}" y="${H2-32}" text-anchor="middle" class="ax2">${pts[i].lab}</text><text x="${x.toFixed(1)}" y="${H2-17}" text-anchor="middle" class="ax3 inc">${won(pts[i].inn)}</text><text x="${x.toFixed(1)}" y="${H2-2}" text-anchor="middle" class="ax3 exp">${won(pts[i].out)}</text>`).join('')+'</svg>';
+  return `<div class="card charts">${s1}${s2}</div>`;}
 function assetHtml(){const ms=allMonths();const pending=ms.some(ym=>!S.live[ym]&&!S.cache[ym]);
   if(pending){ensureMonths(ms);return '<div class="empty"><b>잔액을 계산하는 중이에요</b></div>';}
+  if(S.av){const a=S.settings.accounts.find(x=>x.id===S.av.id);if(a)return avHtml(a);S.av=null;}
   if(S.overview)return `<button class="back" data-act="ovw" data-k="0">‹ 자산으로 돌아가기</button>`+overviewHtml();
   const accs=S.settings.accounts.filter(a=>!a.hidden);const bal=accBalances();
   const cur=curLabel();const td=today();const use=(lab)=>{const u=Object.create(null);for(const t of txIn(period(lab)))if(t.type==='exp'&&t.date<=td)u[t.acc]=(u[t.acc]||0)+t.amount;return u;};
@@ -339,9 +403,8 @@ function assetHtml(){const ms=allMonths();const pending=ms.some(ym=>!S.live[ym]&
   const card=Object.create(null);for(const a of accs)if(a.group==='카드'){const cy=cardCycles(a);const out=Math.max(0,-bal[a.id]);const mi=Math.min(useIn(a.id,cy.cur),out);const due=Math.min(useIn(a.id,cy.prev),out-mi);card[a.id]={mi,due,old:out-mi-due};}
   let pos=0,neg=0;for(const a of accs){if(a.group==='체크카드')continue;const v=bal[a.id];if(v>=0)pos+=v;else neg+=-v;}
   const amt=v=>`<b class="num ${v<0?'exp':v>0?'inc':''}">${won(Math.abs(v))}원</b>`;
-  const row=(a,inner)=>`<button class="acc ${inner.cc?'cc':''}" data-act="accOpen" data-k="${esc(a.id)}"><span>${esc(a.name)}</span>${inner.h}</button>`;
-  let h=`<div class="atool"><b>자산</b><button class="x" data-act="amenu" aria-label="자산 메뉴">⋮</button>${S.amenu?`<div class="amenu-ov" data-act="amenuClose"></div><div class="amenu"><button data-act="accNew">추가</button><button data-act="open" data-k="accHide">표시/숨김</button><button data-act="open" data-k="accDel">삭제</button><button data-act="open" data-k="accOrder">순서 변경</button></div>`:''}</div>
-  <div class="card"><div class="net num"><div><span>자산</span><b class="inc">${won(pos)}</b></div><div><span>부채</span><b class="exp">${won(neg)}</b></div><div><span>합계</span><b>${pos-neg<0?'-':''}${won(Math.abs(pos-neg))}</b></div></div></div>`;
+  const row=(a,inner)=>`<button class="acc ${inner.cc?'cc':''}" data-act="avOpen" data-k="${esc(a.id)}"><span>${esc(a.name)}</span>${inner.h}</button>`;
+  let h=`<div class="card"><div class="net num"><div><span>자산</span><b class="inc">${won(pos)}</b></div><div><span>부채</span><b class="exp">${won(neg)}</b></div><div><span>합계</span><b>${pos-neg<0?'-':''}${won(Math.abs(pos-neg))}</b></div></div></div>`;
   const mlab=+cur.slice(5,7)+'월';
   for(const g of GROUPS){const list=accs.filter(a=>(a.group||'기타')===g);if(!list.length)continue;
     if(g==='카드'){const sDue=list.reduce((x,a)=>x+card[a.id].due+card[a.id].old,0),sMi=list.reduce((x,a)=>x+card[a.id].mi,0);
@@ -352,26 +415,33 @@ function assetHtml(){const ms=allMonths();const pending=ms.some(ym=>!S.live[ym]&
     const sum=list.reduce((x,a)=>x+bal[a.id],0);
     h+=`<div class="grp"><div class="grp-h"><span>${g}</span><span class="num ${sum<0?'exp':sum>0?'inc':''}">${won(Math.abs(sum))}원</span></div><div class="rows" style="border-radius:var(--r)">${list.map(a=>row(a,{h:amt(bal[a.id])})).join('')}</div></div>`;}
   const nh=S.settings.accounts.length-accs.length;
-  h+=`<div class="menu"><button data-act="ovw" data-k="1"><span>전체 통계 보기</span><small>누적잔액 · 월별 추이 ›</small></button>${nh?`<button data-act="open" data-k="accHide"><span>숨긴 자산</span><small>${nh}개 ›</small></button>`:''}</div><p style="font-size:12px;color:var(--muted);padding:0 4px;line-height:1.6">빨간 숫자는 쓴 돈이 들어온 돈보다 많은 금액(부채)이에요. 카드: 미결제금액 = 이번 사용 기간 사용액, 결제예정금액 = 지난 사용 기간 사용액(카드마다 정산일 기준), 아래 회색 = 그 전부터 남은 금액. 오늘 이후 날짜의 내역(할부 다음 회차 등)은 그날이 되면 들어가요. 체크카드는 이번 달 사용액만 보여주고 합계에는 넣지 않아요. 자산을 누르면 이름·그룹·시작 잔액을 고칠 수 있어요.</p>`;
+  h+=`<div class="menu">${nh?`<button data-act="open" data-k="accHide"><span>숨긴 자산</span><small>${nh}개 ›</small></button>`:''}</div><p style="font-size:12px;color:var(--muted);padding:0 4px;line-height:1.6">빨간 숫자는 쓴 돈이 들어온 돈보다 많은 금액(부채)이에요. 카드: 미결제금액 = 이번 사용 기간 사용액, 결제예정금액 = 지난 사용 기간 사용액(카드마다 정산일 기준), 아래 회색 = 그 전부터 남은 금액. 오늘 이후 날짜의 내역(할부 다음 회차 등)은 그날이 되면 들어가요. 체크카드는 이번 달 사용액만 보여주고 합계에는 넣지 않아요. 자산을 누르면 그 자산의 내역과 추이를 볼 수 있어요. 오른쪽 위 그래프 단추는 전체 통계예요.</p>`;
   return h;}
 
 function moreHtml(){const st=S.settings;const bt=st.budget&&st.budget.total;
-  return `${isStandalone()?'':`<div class="card inst"><img src="logo-mark.svg" alt="" width="56" height="56"><div><b>티끌모아를 앱으로 설치</b><span class="muted">홈 화면 아이콘으로 바로 열려요</span></div><button class="btn pri" data-act="install">설치</button></div>`}<div class="menu">
-  <button data-act="open" data-k="search"><span>내역 검색</span><small>›</small></button>
-  <button data-act="open" data-k="sms"><span>카드 문자 붙여넣기</span><small>여러 건 한 번에</small></button></div>
-  <div class="menu">
-  <button data-act="open" data-k="budget"><span>예산</span><small class="num">${bt?'월 '+won(bt)+'원':'설정 안 함'}</small></button>
-  <button data-act="open" data-k="cats"><span>분류 편집</span><small>지출 ${st.cats.exp.length} · 수입 ${st.cats.inc.length}</small></button>
-  <button data-act="open" data-k="accounts"><span>계좌·카드</span><small>${st.accounts.length}개</small></button>
-  <button data-act="open" data-k="recurring"><span>반복 입력</span><small>${(st.recurring||[]).length}건</small></button>
-  <button data-act="open" data-k="favorites"><span>자주 쓰는 내역</span><small>${(st.favorites||[]).length}건</small></button>
-  <button data-act="open" data-k="monthStart"><span>월 시작일</span><small>매월 ${parseInt(st.monthStart,10)||1}일</small></button>
-  <button data-act="open" data-k="sync"><span>계정·동기화·백업</span><small>${GH.err?'<span class="exp">끊김</span>':esc((S.user&&S.user.email)||'')}</small></button>
-  <button data-act="open" data-k="pin"><span>비밀번호 잠금</span><small>${st.pin?'사용 중':'사용 안 함'}</small></button></div>
-  <div class="menu">
-  <button data-act="export" data-k="month"><span>이번 달 엑셀로 내보내기</span><small>›</small></button>
-  <button data-act="export" data-k="all"><span>전체 내역 엑셀로 내보내기</span><small>›</small></button></div>
-  <div class="card help"><h3>여러 휴대폰에서 같이 쓰기</h3>
+  if(S.moreView==='set')return setMgmtHtml();
+  const sc=!S.db?'off':GH.err?'off':S.db.pending()?'pending':'ok';
+  const G=(act,k,ic,n)=>`<button class="gi" data-act="${act}" data-k="${k}">${ic}<span>${n}</span></button>`;
+  return `<div class="card acct"><button class="acct-h" data-act="open" data-k="sync"><span><b>${esc((S.user&&S.user.displayName)||'내 가계부')}</b><small class="muted">${esc((S.user&&S.user.email)||'')}</small></span><i>›</i></button>
+   <div class="acct-s"><span><span class="muted">실시간 동기화</span> <em class="sync-b ${sc}">${sc==='off'?'끊김':sc==='pending'?'저장 중':'사용 중'}</em><br><small class="muted">다른 폰·PC와 바로 맞춰져요</small></span><button class="btn sm" data-act="open" data-k="sync">백업·계정</button></div></div>
+  <div class="grid3">${isStandalone()?'':G('install','', MICON.install,'앱 설치')}${G('moreGo','set',MICON.gear,'설정관리')}${G('open','sms',MICON.sms,'문자 붙여넣기')}${G('open','search',MICON.search,'내역 검색')}${G('open','sync',MICON.backup,'백업/복원')}${G('export','month',MICON.xls,'이번 달 엑셀')}${G('export','all',MICON.xls,'전체 엑셀')}</div>
+  <div class="card help"><h3>여러 휴대폰에서 같이 쓰기</h3>`+moreHelp();}
+const MI=d=>`<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const MICON={gear:MI('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
+ sms:MI('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>'),search:MI('<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>'),
+ backup:MI('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>'),xls:MI('<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M9 13l4 5M13 13l-4 5"/>'),
+ install:MI('<path d="M12 3v12M7 10l5 5 5-5M4 20h16"/>')};
+function setMgmtHtml(){const st=S.settings;const bt=st.budget&&st.budget.total;const nd=(st.deleted||[]).length;const nc=st.accounts.filter(a=>a.group==='카드').length;
+  const it=(act,k,n,v,extra)=>`<button data-act="${act}" data-k="${k}" ${extra||''}><span>${n}</span><small class="sv">${v||''}</small></button>`;
+  return `<div class="smg"><div class="smh">자산관리</div>
+   ${it('open','accounts','자산설정',st.accounts.length+'개')}${it('open','accHide','표시/숨김',st.accounts.filter(a=>a.hidden).length?st.accounts.filter(a=>a.hidden).length+'개 숨김':'')}${it('open','accOrder','자산 순서 변경','')}${it('open','accDeleted','삭제된 자산',nd?nd+'개':'')}${it('open','cardPerf','카드 이용실적',nc+'장')}
+   <div class="smh">분류/반복</div>
+   ${it('catsOf','inc','수입분류 관리',st.cats.inc.length+'개')}${it('catsOf','exp','지출분류 관리',st.cats.exp.length+'개')}${it('setToggle','subOn','소분류 기능',st.subOn===false?'OFF':'ON')}${it('open','budget','예산설정',bt?'월 '+won(bt)+'원':'')}${it('open','favorites','자주 쓰는 내역',(st.favorites||[]).length+'건')}${it('open','recurring','반복관리',(st.recurring||[]).length+'건')}
+   <div class="smh">설정관리</div>
+   ${it('setToggle','firstSub','가계부탭 첫화면 (일일/달력)',st.firstSub==='cal'?'달력':'일일')}${it('open','monthStart','월 시작일',(parseInt(st.monthStart,10)||1)+' 일')}${it('setToggle','weekStart','주간 시작일 설정',st.weekStart===1?'월요일':'일요일')}
+   <div class="smh">기타</div>
+   ${it('open','pin','비밀번호',st.pin?'ON':'OFF')}${it('open','sync','계정·동기화·백업','')}</div>`;}
+function moreHelp(){return `
   <p><b>내 폰·PC 여러 대</b> — 각 기기에서 이 주소를 열고 같은 구글 계정으로 로그인하면 끝이에요. 한쪽에서 입력하면 다른 기기에 바로 나타나요.</p>
   <p><b>가족과 함께</b> — 가족 구글 계정을 허용 목록에 넣으면 같은 장부에 함께 적을 수 있어요. 필요하면 Claude에게 부탁하세요.</p>
   <p><b>앱처럼 쓰기</b> — 휴대폰 브라우저에서 링크를 연 뒤 ‘홈 화면에 추가’를 누르면 아이콘으로 바로 열려요.</p></div>${footHtml()}`;}
@@ -453,9 +523,11 @@ const SHEETS={
   h+=`<div class="acts">${isNew?'':`<button class="btn" data-act="aeHide">${d.hidden?'다시 표시':'숨기기'}</button>`}<button class="btn pri" data-act="aeSave">저장하기</button></div></div>`;
   if(S.aeGP)h+=`<div class="gdlg-ov" data-act="aeGroupClose"></div><div class="gdlg" role="dialog" aria-label="자산그룹"><h3>자산그룹</h3>${GROUPS.map(x=>`<button data-act="aeGroup" data-k="${x}" class="${x===g?'on':''}">${x}</button>`).join('')}</div>`;
   return h+'</div>';},
+ accDeleted(){const d=S.settings.deleted||[];return head('삭제된 자산')+(d.length?`<p class="muted" style="margin:0 0 10px;font-size:13px">되살리면 원래 그룹 맨 끝에 다시 생기고, 그 자산으로 적은 내역도 그대로 이어져요.</p><div class="alist">${d.map(a=>`<div class="ali"><span>${esc(a.name)}<small class="muted" style="display:block;font-size:12px">${esc(a.group)}</small></span><button class="btn sm" data-act="aRestore" data-k="${esc(a.id)}">되살리기</button></div>`).join('')}</div>`:'<div class="empty"><b>삭제된 자산이 없어요</b></div>');},
+ cardPerf(){const l=S.settings.accounts.filter(a=>a.group==='카드');return head('카드 이용실적')+`<p class="muted" style="margin:0 0 10px;font-size:13px">카드마다 한 달에 채워야 하는 실적 금액을 적어 두면, 자산 › 카드 › 그래프 화면에서 얼마 남았는지 보여줘요.</p><div class="alist">${l.map(a=>`<div class="ali"><span>${esc(a.name)}</span><input class="in-t num perfin" data-perf="${esc(a.id)}" inputmode="numeric" value="${a.perf?won(a.perf):''}" placeholder="0원"></div>`).join('')}</div><div class="acts"><button class="btn pri" data-act="perfSave">저장</button></div>`;},
  accHide(){return head('표시/숨김')+`<p class="muted" style="margin:0 0 10px;font-size:13px">눈을 끄면 자산 화면과 입력할 때 고르는 목록에서 숨겨요. 내역은 그대로 남아요.</p><div class="alist">${accGrouped(a=>`<button class="ali" data-act="aHide" data-k="${esc(a.id)}"><span class="${a.hidden?'muted':''}">${esc(a.name)}</span><i class="eye ${a.hidden?'off':''}">${a.hidden?EYEX:EYE}</i></button>`)}</div>`;},
  accDel(){const ask=S.accDelAsk;const cnt=ask?allMonths().flatMap(txOf).filter(t=>t.acc===ask||t.to===ask).length:0;
-  return head('삭제')+`<div class="alist">${accGrouped(a=>`<div class="ali"><button class="minus" data-act="aDel" data-k="${esc(a.id)}" aria-label="${esc(a.name)} 삭제">−</button><span>${esc(a.name)}</span>${ask===a.id?`<button class="btn danger sm" data-act="aDelOk" data-k="${esc(a.id)}">삭제</button>`:''}</div>${ask===a.id?`<div class="adwarn">${cnt?`이 자산으로 적은 내역 ${cnt}건은 남지만 자산 이름이 '(삭제된 자산)'으로 보여요. 안 쓰는 자산이면 '숨기기'를 권해요.`:'이 자산으로 적은 내역이 없어요.'}</div>`:''}`)}</div>`;},
+  return head('삭제')+`<div class="alist">${accGrouped(a=>`<div class="ali"><button class="minus" data-act="aDel" data-k="${esc(a.id)}" aria-label="${esc(a.name)} 삭제">−</button><span>${esc(a.name)}</span>${ask===a.id?`<button class="btn danger sm" data-act="aDelOk" data-k="${esc(a.id)}">삭제</button>`:''}</div>${ask===a.id?`<div class="adwarn">${cnt?`이 자산으로 적은 내역 ${cnt}건은 그대로 남아요. 삭제한 자산은 설정관리 › 삭제된 자산에서 되살릴 수 있어요.`:'이 자산으로 적은 내역이 없어요.'}</div>`:''}`)}</div>`;},
  accOrder(){const sel=S.accSel;return head('순서 변경',`<span class="ordbtn"><button class="x" data-act="aMove" data-k="-1" aria-label="위로" ${sel?'':'disabled'}>▲</button><button class="x" data-act="aMove" data-k="1" aria-label="아래로" ${sel?'':'disabled'}>▼</button></span>`)+`<p class="muted" style="margin:0 0 10px;font-size:13px">옮길 자산을 누르고 ▲▼로 움직여요. 같은 그룹 안에서 움직여요.</p><div class="alist">${accGrouped(a=>`<button class="ali ${sel===a.id?'sel':''}" data-act="aSel" data-k="${esc(a.id)}"><span>${esc(a.name)}</span>${sel===a.id?'<i class="chk">✓</i>':''}</button>`)}</div>`;},
  tx(){const f=S.form;const edit=!!f.orig;const val=calc(f.amountStr);const ops=/[+\-*/×÷−]/.test(f.amountStr.replace(/^-/,''));
   const [yy,mm,dd]=f.date.split('-');const dl=esc(`${String(yy).slice(2)}. ${mm}. ${dd}. (${DOW[dowOf(f.date)]||''})`);
@@ -650,10 +722,10 @@ function readRec(){const r=S.recDraft;if(!r)return;const g=id=>document.getEleme
 function readAcc(){document.querySelectorAll('[data-acc]').forEach(el=>{const a=S.accDraft[+el.dataset.i];const k=el.dataset.acc;a[k]=k==='init'?(calc(el.value)||0):el.value;});}
 
 const ACT={
- tab(el){S.tab=el.dataset.k;S.overview=false;try{localStorage.setItem('moneybook.tab',S.tab);}catch(e){}if(S.tab==='asset')ensureMonths(allMonths(),true);window.scrollTo(0,0);render();},
+ tab(el){if(S.tab===el.dataset.k){S.av=null;S.moreView='';}S.tab=el.dataset.k;S.overview=false;S.amenu=false;S.smOpen=false;try{localStorage.setItem('moneybook.tab',S.tab);}catch(e){}if(S.tab==='asset')ensureMonths(allMonths(),true);window.scrollTo(0,0);render();},
  prev(){S.label=shiftLabel(S.label,-1);S.selDay='';subscribePeriod();render();},
  next(){S.label=shiftLabel(S.label,1);S.selDay='';subscribePeriod();render();},
- add(){openTx(null);},
+ add(){openTx(null);if(S.tab==='asset'&&S.av&&S.form){const a=S.settings.accounts.find(x=>x.id===S.av.id);if(a)S.form.acc=a.id;renderSheet();}},
  edit(el){const t=txOf(el.dataset.ym).find(x=>x.id===el.dataset.id);if(!t)return;if(!S.canWrite){toast('보기 전용이에요');return;}openTx(t);},
  pickDay(el){S.selDay=S.selDay===el.dataset.d?'':el.dataset.d;render();},
  stype(el){S.statType=el.dataset.k;render();},
@@ -679,7 +751,7 @@ const ACT={
  fsub(el){readForm();S.form.sub=S.form.sub===el.dataset.k?'':el.dataset.k;renderSheet();},
  sub(el){S.sub=el.dataset.k;S.selDay='';try{localStorage.setItem('moneybook.sub',S.sub);}catch(e){}if(S.sub==='month'&&!S.openMonth)S.openMonth=curLabel();window.scrollTo(0,0);render();},
  yprev(){S.label=shiftLabel(S.label,-12);S.openMonth='';subscribePeriod();render();},ynext(){S.label=shiftLabel(S.label,12);S.openMonth='';subscribePeriod();render();},
- omonth(el){S.openMonth=S.openMonth===el.dataset.k?'':el.dataset.k;render();},
+ omonth(el){S.openMonth=(S.openMonth||curLabel())===el.dataset.k?'none':el.dataset.k;render();},
  async memoSave(){const t=document.getElementById('memo-text');if(!t||!S.memo)return;const v=t.value;try{await S.db.doc('memo/'+S.memo.ym).set({text:v,updated:Date.now()});S.memo.text=v;S.memo.saved=v;const st=document.getElementById('memo-st');if(st)st.textContent='저장됨';toast('메모를 저장했어요');}catch(e){toast(dbErr(e));}},
  favUse(el){const x=S.settings.favorites[+el.dataset.i];if(!x)return;openTx(null);Object.assign(S.form,{type:x.type,amountStr:String(x.amount),cat:x.cat||'',sub:x.sub||'',acc:x.acc||S.form.acc,to:x.to||'',memo:x.memo||''});renderSheet();},
  instHide(){try{localStorage.setItem('moneybook.instHide',today());}catch(e){}render();},
@@ -707,6 +779,24 @@ const ACT={
  mpPick(el){S.mp=null;mpRender();goLabel(el.dataset.k);},
  mpPickY(el){const y=+el.dataset.k;const mode=S.mp.mode;S.mp=null;mpRender();if(mode==='syear'){S.spYear=y;S.statCat='';render();}else goLabel(y+'-'+S.label.slice(5,7));},
  mpNow(){const mode=S.mp.mode;S.mp=null;mpRender();if(mode==='syear'){S.spYear=+today().slice(0,4);render();}else if(mode==='year')goLabel(today().slice(0,4)+'-'+S.label.slice(5,7));else goLabel(curLabel());},
+ avOpen(el){const id=el.dataset.k;S.av={id,tab:'d',label:curLabel(),year:+today().slice(0,4),chart:false};window.scrollTo(0,0);render();},
+ avClose(){S.av=null;window.scrollTo(0,0);render();},
+ avTab(el){S.av.tab=el.dataset.k;render();},
+ avShift(el){const k=+el.dataset.k;if(S.av.tab==='d'){S.av.label=shiftLabel(S.av.label,k);S.av.year=+S.av.label.slice(0,4);}else S.av.year+=k;render();},
+ avChart(){S.av.chart=!S.av.chart;render();},
+ avGo(el){if(el.dataset.k){S.av.tab='d';S.av.label=el.dataset.k;}else if(el.dataset.y){S.av.tab='m';S.av.year=+el.dataset.y;}window.scrollTo(0,0);render();},
+ avPay(){const a=S.settings.accounts.find(x=>x.id===S.av.id);if(!a)return;const bal=accBalances()[a.id]||0;const cy=cardCycles(a);
+  const due=allMonths().flatMap(txOf).filter(t=>t.type==='exp'&&t.acc===a.id&&t.date>=cy.prev.start&&t.date<=cy.prev.end).reduce((x,t)=>x+t.amount,0);
+  const amt=Math.max(0,Math.min(due||-bal,-bal));openTx({type:'trf',date:today(),amount:amt,cat:'',sub:'',acc:a.pay||'',to:a.id,memo:a.name+' 결제',note:'',time:''});if(!amt)S.form.amountStr='';},
+ moreGo(el){S.moreView=el.dataset.k;window.scrollTo(0,0);render();},
+ moreBack(){S.moreView='';window.scrollTo(0,0);render();},
+ smOpen(){S.smOpen=!S.smOpen;render();},smClose(){S.smOpen=false;render();},
+ smPick(el){S.smOpen=false;S.sp=el.dataset.k;S.statCat='';if(S.sp==='week')S.spWeek=today();if(S.sp==='year')S.spYear=+S.label.slice(0,4);if(S.sp==='range'){const p=period(S.label);S.rFrom=p.start;S.rTo=p.last;}render();},
+ catsOf(el){ACT.open({dataset:{k:'cats'}});S.catType=el.dataset.k;renderSheet();},
+ setToggle(el){const k=el.dataset.k;const st=S.settings;if(k==='subOn')saveSettings({subOn:st.subOn===false});else if(k==='firstSub')saveSettings({firstSub:st.firstSub==='cal'?'daily':'cal'});else if(k==='weekStart')saveSettings({weekStart:st.weekStart===1?0:1});},
+ aRestore(el){const id=el.dataset.k;const d=(S.settings.deleted||[]).find(a=>a.id===id);if(!d)return;const a=Object.assign({},d);delete a.deletedAt;const list=S.settings.accounts.slice();let at=-1;list.forEach((x,i)=>{if(x.group===a.group)at=i;});if(at<0)list.push(a);else list.splice(at+1,0,a);
+  saveSettings({accounts:list,deleted:S.settings.deleted.filter(x=>x.id!==id)});toast(a.name+' 되살렸어요');renderSheet();},
+ perfSave(){const m={};document.querySelectorAll('[data-perf]').forEach(el=>m[el.dataset.perf]=calc(el.value.replace(/원/g,''))||0);saveSettings({accounts:S.settings.accounts.map(a=>m[a.id]!=null?Object.assign({},a,{perf:m[a.id]}):a)});toast('저장했어요');closeSheet();},
  amenu(){S.amenu=!S.amenu;render();},
  amenuClose(){S.amenu=false;render();},
  accNew(){S.amenu=false;S.accEd={id:'',name:'',group:'현금',init:0,hidden:false,cutDay:1,payDay:1};S.aeGP=false;render();openSheet('accEdit');setTimeout(()=>{const t=document.getElementById('ae-name');if(t)t.focus();},60);},
@@ -727,10 +817,10 @@ const ACT={
  aHide(el){const id=el.dataset.k;const vis=S.settings.accounts.filter(a=>!a.hidden);const a=S.settings.accounts.find(x=>x.id===id);if(!a)return;if(!a.hidden&&vis.length<=1){toast('하나는 보여야 해요');return;}
   saveSettings({accounts:S.settings.accounts.map(x=>x.id===id?Object.assign({},x,{hidden:!x.hidden}):x)});renderSheet();},
  aDel(el){S.accDelAsk=S.accDelAsk===el.dataset.k?'':el.dataset.k;ensureMonths(allMonths()).then(()=>{if(S.sheet==='accDel')renderSheet();});renderSheet();},
- aDelOk(el){const id=el.dataset.k;if(S.settings.accounts.length<=1){toast('자산은 하나 이상 있어야 해요');return;}S.accDelAsk='';saveSettings({accounts:S.settings.accounts.filter(a=>a.id!==id)});toast('삭제했어요');renderSheet();},
+ aDelOk(el){const id=el.dataset.k;if(S.settings.accounts.length<=1){toast('자산은 하나 이상 있어야 해요');return;}S.accDelAsk='';const del=S.settings.accounts.find(a=>a.id===id);saveSettings({accounts:S.settings.accounts.filter(a=>a.id!==id),deleted:(S.settings.deleted||[]).concat(Object.assign({},del,{deletedAt:Date.now()}))});toast('삭제했어요. 설정관리 › 삭제된 자산에서 되살릴 수 있어요');renderSheet();},
  aSel(el){S.accSel=S.accSel===el.dataset.k?'':el.dataset.k;renderSheet();},
  aMove(el){const id=S.accSel;if(!id)return;const d=+el.dataset.k;const l=S.settings.accounts.slice();const i=l.findIndex(a=>a.id===id);if(i<0)return;const g=l[i].group;let j=i+d;while(j>=0&&j<l.length&&l[j].group!==g)j+=d;if(j<0||j>=l.length)return;[l[i],l[j]]=[l[j],l[i]];saveSettings({accounts:l});renderSheet();const b=document.querySelector('.ali.sel');if(b)b.scrollIntoView({block:'nearest'});},
- ovw(el){S.overview=el.dataset.k==='1';window.scrollTo(0,0);render();},
+ ovw(el){S.overview=el.dataset.k==='1';S.av=null;window.scrollTo(0,0);render();},
  sprev(){ACT._sshift(-1);}, snext(){ACT._sshift(1);},
  _sshift(k){S.statCat='';if(S.sp==='month'){S.label=shiftLabel(S.label,k);subscribePeriod();}
   else if(S.sp==='week')S.spWeek=addDays(statPeriod().start,7*k);else if(S.sp==='year')S.spYear=(S.spYear||+S.label.slice(0,4))+k;render();},
@@ -910,7 +1000,7 @@ async function restoreSnapshot(snap,onProg){const fs=S.fs;const base='books/'+BO
   return plan;}
 function startDb(){S.needSetup=false;S.db=makeFbDb(S.fs);let firstMs=null;
   S.db.doc('ledger/settings').onSnapshot(snap=>{const d=snap.exists?snap.data():{};S.settings=normalizeSettings(clone(d));GH.denied=false;
-    if(firstMs===null){firstMs=S.settings.monthStart;S.label=curLabel();subscribePeriod();}
+    if(firstMs===null){firstMs=S.settings.monthStart;S.label=curLabel();subscribePeriod();if(S.freshOpen&&S.tab==='list')S.sub=S.settings.firstSub==='cal'?'cal':'daily';}
     else if(firstMs!==S.settings.monthStart){firstMs=S.settings.monthStart;subscribePeriod();}
     try{if(S.settings.pin)localStorage.setItem('moneybook.pinOn','1');else localStorage.removeItem('moneybook.pinOn');localStorage.setItem('moneybook.lockMin',String(S.settings.lockMin??1));}catch(e){}
     if(!S.settings.pin&&S.pinPending){S.locked=false;}S.pinPending=false;

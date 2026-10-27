@@ -434,3 +434,9 @@ html.locked,html.locked body{overflow:hidden;overscroll-behavior:none;height:100
 
 /* 당겨서 새로고침 막기 */
 html,body{overscroll-behavior-y:none}
+
+/* 키패드: 닿는 순간 눌림 표시, 두 번 탭 확대·텍스트 선택 막기 */
+.pad button,.kpg button{touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.lock .pad button.press{background:rgba(255,255,255,.42);transform:scale(.93)}
+.sheet .pad button.press,.kpg button.press{background:var(--accent-soft);transform:scale(.95)}
+.kpg button.done.press{filter:brightness(.92)}

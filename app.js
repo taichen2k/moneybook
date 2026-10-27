@@ -118,7 +118,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=21; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=22; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -766,8 +766,13 @@ document.addEventListener('change',e=>{const t=e.target;
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.mp){ACT.mpClose();return;}if(S.sheet==='tx'&&S.form&&(S.form.panel==='amt'||S.form.panel==='fee')&&!/INPUT|TEXTAREA/.test((e.target||{}).tagName||'')){const m={'Backspace':'back','Enter':'done','+':'+','-':'−','*':'×','/':'÷'};const k=/^[0-9]$/.test(e.key)?e.key:m[e.key];if(k){e.preventDefault();ACT.kp({dataset:{k}});return;}}if(S.locked&&S.settings.pin&&/^[0-9]$|^Backspace$/.test(e.key)){ACT.pinKey({dataset:{k:e.key==='Backspace'?'back':e.key}});return;}if(e.key==='Escape'&&S.sheet)closeSheet();if(e.key==='Enter'&&e.target.id==='c-new'){e.preventDefault();ACT.catAdd();}});
 
 document.addEventListener('touchmove',e=>{if(lockOn())e.preventDefault();},{passive:false});
+// 새 판이 올라오면 저절로 바꿔요: 앱을 다시 볼 때·30분마다 확인하고, 입력 창이 열려 있지 않을 때만 새로 불러요
+let updAt=0;async function checkUpdate(){if(Date.now()-updAt<60000||!navigator.onLine)return;updAt=Date.now();
+  try{const t=await fetch('./sw.js?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'');const m=t.match(/moneybook-v(\d+)/);
+    if(m&&+m[1]>APP_VERSION&&!S.sheet&&!S.form){try{if(sessionStorage.getItem('moneybook.updTo')===m[1])return;sessionStorage.setItem('moneybook.updTo',m[1]);}catch(e){}try{const r=await navigator.serviceWorker.getRegistration();if(r)await r.update();}catch(e){}if(!lockOn())markActive();location.reload();}}catch(e){}}
+setInterval(checkUpdate,30*60000);
 document.addEventListener('visibilitychange',()=>{if(document.hidden){S.hiddenAt=Date.now();if(S.settings.pin)document.documentElement.classList.add('veil');if(!lockOn())markActive();return;}
-  document.documentElement.classList.remove('veil');
+  document.documentElement.classList.remove('veil');checkUpdate();
   if(S.settings.pin&&!S.locked&&S.hiddenAt&&Date.now()-S.hiddenAt>=(S.settings.lockMin??1)*60000){S.locked=true;S.pinIn='';S.pinErr='';closeSheet();render();}});
 /* ---------- boot ---------- */
 S.label=curLabel();render();
@@ -834,6 +839,6 @@ function startAuth(){if(!window.firebase||!firebase.initializeApp){S.fbMissing=t
 (function boot(){if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{});
   const fresh=recentlyActive();if(fresh)S.unlockedOnce=true;
   try{if(localStorage.getItem('moneybook.pinOn')==='1'&&!fresh){S.locked=true;S.pinPending=true;}}catch(e){}
-  render();startAuth();
+  render();startAuth();setTimeout(checkUpdate,8000);
 })();
 })();

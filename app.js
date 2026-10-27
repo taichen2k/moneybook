@@ -44,7 +44,8 @@ async function hashPin(pin,salt){const txt=salt+':'+pin;try{const b=await crypto
   catch(e){let h=2166136261;for(const c of txt){h^=c.charCodeAt(0);h=Math.imul(h,16777619)>>>0;}return 'f'+h.toString(16);}}
 function padHtml(){return `<div class="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-act="pinKey" data-k="${n}">${n}</button>`).join('')}<span></span><button data-act="pinKey" data-k="0">0</button><button data-act="pinKey" data-k="back" aria-label="지우기">⌫</button></div>`;}
 function dotsHtml(n,bad){return `<div class="pdots ${bad?'bad':''}">${[0,1,2,3].map(i=>`<i class="${i<n?'on':''}"></i>`).join('')}</div>`;}
-function renderLock(){const r=$('#lockRoot');if(!(S.locked&&S.settings.pin)){r.innerHTML='';return;}
+const lockOn=()=>!!(S.locked&&(S.settings.pin||S.pinPending));
+function renderLock(){const r=$('#lockRoot');const on=lockOn();document.documentElement.classList.toggle('locked',on);if(!on){r.innerHTML='';return;}
   r.innerHTML=`<div class="lock" role="dialog" aria-label="비밀번호 입력"><img src="logo-mark.svg" alt="" width="72" height="72" style="border-radius:18px;box-shadow:0 4px 14px rgba(0,0,0,.18)"><h2>티끌모아</h2><div>비밀번호 4자리를 입력하세요</div>${dotsHtml(S.pinIn.length,!!S.pinErr)}<div class="perr">${esc(S.pinErr)}</div>${padHtml()}</div>`;}
 const dot2=s=>s.slice(2).replace(/-/g,'.');
 const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
@@ -84,7 +85,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=15; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=16; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -140,7 +141,9 @@ const HICON={sms:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="
   search:'<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>',
   set:'<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>'};
 
-function render(){renderLock();renderTop();renderView();if(S.sheet==='filter')renderSheet();
+function render(){renderLock();
+  if(lockOn()){$('#top').innerHTML='';$('#view').innerHTML='';$('#tabs').hidden=true;$('#fab').hidden=true;if(S.sheet)closeSheet();return;}
+  $('#tabs').hidden=false;renderTop();renderView();if(S.sheet==='filter')renderSheet();
   $('#tabs .in').innerHTML=TABS.map(([k,n])=>`<button data-act="tab" data-k="${k}" class="${S.tab===k?'on':''}" aria-label="${n}">${ICONS[k]}<span>${n}</span></button>`).join('');
   $('#fab').hidden=!S.db||!S.canWrite||S.tab==='more'||(S.tab==='list'&&S.sub==='memo');}
 
@@ -579,7 +582,7 @@ const ACT={
   try{await firebase.auth().signInWithPopup(p);}catch(e){if(['auth/popup-blocked','auth/operation-not-supported-in-this-environment','auth/cancelled-popup-request','auth/web-storage-unsupported'].includes(e.code)){try{await firebase.auth().signInWithRedirect(p);return;}catch(e2){e=e2;}}
     if(e.code!=='auth/popup-closed-by-user')S.loginErr=authErr(e);}S.loginBusy=false;render();},
  async logoutNow(){try{await firebase.auth().signOut();}catch(e){}try{await S.fs.terminate();await S.fs.clearPersistence();}catch(e){}
-  try{Object.keys(localStorage).filter(k=>k.startsWith('moneybook.f.')).forEach(k=>localStorage.removeItem(k));}catch(e){}location.reload();},
+  try{Object.keys(localStorage).filter(k=>k.startsWith('moneybook.f.')||k==='moneybook.pinOn').forEach(k=>localStorage.removeItem(k));}catch(e){}location.reload();},
  logout(){if(!S.ghOffAsk){S.ghOffAsk=true;renderSheet();return;}S.ghOffAsk=false;ACT.logoutNow();},
  async bkFile(){toast('백업 파일을 만드는 중이에요');try{const snap=await fullSnapshot();const n=Object.values(snap.tx).reduce((a,l)=>a+l.length,0);
   const url=URL.createObjectURL(new Blob([JSON.stringify(snap)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='티끌모아_'+stamp()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);toast('내역 '+n+'건을 백업 파일로 저장했어요');}catch(e){toast('백업 파일을 만들지 못했어요');}},
@@ -670,8 +673,8 @@ const ACT={
  pinStart(){S.pinDraft={step:1,first:'',cur:'',err:''};renderSheet();},
  pinOff(){saveSettings({pin:null});toast('잠금을 껐어요');renderSheet();},
  async pinKey(el){const k=el.dataset.k;
-  if(S.locked&&S.settings.pin){if(k==='back'){S.pinIn=S.pinIn.slice(0,-1);S.pinErr='';renderLock();return;}if(S.pinIn.length>=4)return;S.pinIn+=k;S.pinErr='';renderLock();
-    if(S.pinIn.length===4){const h=await hashPin(S.pinIn,S.settings.pin.salt);if(h===S.settings.pin.hash){S.locked=false;S.unlockedOnce=true;S.pinIn='';render();}else{S.pinIn='';S.pinErr='비밀번호가 달라요';renderLock();}}return;}
+  if(lockOn()){if(k==='back'){S.pinIn=S.pinIn.slice(0,-1);S.pinErr='';renderLock();return;}if(S.pinIn.length>=4)return;S.pinIn+=k;S.pinErr='';renderLock();
+    if(S.pinIn.length===4){if(!S.settings.pin){S.pinIn='';S.pinErr='잠금 정보를 불러오는 중이에요. 잠시 뒤 다시 눌러주세요';renderLock();return;}const h=await hashPin(S.pinIn,S.settings.pin.salt);if(h===S.settings.pin.hash){S.locked=false;S.unlockedOnce=true;S.pinIn='';render();}else{S.pinIn='';S.pinErr='비밀번호가 달라요';renderLock();}}return;}
   const d=S.pinDraft;if(!d)return;if(k==='back'){d.cur=d.cur.slice(0,-1);d.err='';renderSheet();return;}if(d.cur.length>=4)return;d.cur+=k;d.err='';renderSheet();
   if(d.cur.length===4){if(d.step===1){d.first=d.cur;d.cur='';d.step=2;setTimeout(renderSheet,150);}
     else if(d.cur===d.first){const salt=newId();const hash=await hashPin(d.cur,salt);saveSettings({pin:{salt,hash}});S.unlockedOnce=true;S.pinDraft=null;toast('비밀번호를 설정했어요');closeSheet();}
@@ -700,8 +703,9 @@ document.addEventListener('change',e=>{const t=e.target;
   if(t.id==='sp-from'||t.id==='sp-to'){if(t.value){if(t.id==='sp-from')S.rFrom=t.value;else S.rTo=t.value;}render();return;}if(t.dataset.sms&&S.sms){S.sms.items[+t.dataset.i][t.dataset.sms]=t.value;}});
 document.addEventListener('keydown',e=>{if(S.sheet==='tx'&&S.form&&(S.form.panel==='amt'||S.form.panel==='fee')&&!/INPUT|TEXTAREA/.test((e.target||{}).tagName||'')){const m={'Backspace':'back','Enter':'done','+':'+','-':'−','*':'×','/':'÷'};const k=/^[0-9]$/.test(e.key)?e.key:m[e.key];if(k){e.preventDefault();ACT.kp({dataset:{k}});return;}}if(S.locked&&S.settings.pin&&/^[0-9]$|^Backspace$/.test(e.key)){ACT.pinKey({dataset:{k:e.key==='Backspace'?'back':e.key}});return;}if(e.key==='Escape'&&S.sheet)closeSheet();if(e.key==='Enter'&&e.target.id==='c-new'){e.preventDefault();ACT.catAdd();}});
 
+document.addEventListener('touchmove',e=>{if(lockOn())e.preventDefault();},{passive:false});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){S.hiddenAt=Date.now();return;}
-  if(S.settings.pin&&!S.locked&&S.hiddenAt&&Date.now()-S.hiddenAt>=(S.settings.lockMin??1)*60000){S.locked=true;S.pinIn='';S.pinErr='';closeSheet();renderLock();}});
+  if(S.settings.pin&&!S.locked&&S.hiddenAt&&Date.now()-S.hiddenAt>=(S.settings.lockMin??1)*60000){S.locked=true;S.pinIn='';S.pinErr='';closeSheet();render();}});
 /* ---------- boot ---------- */
 S.label=curLabel();render();
 const isPC=()=>!/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)&&!(navigator.maxTouchPoints>1&&/Mac/.test(navigator.platform));
@@ -747,6 +751,8 @@ function startDb(){S.needSetup=false;S.db=makeFbDb(S.fs);let firstMs=null;
   S.db.doc('ledger/settings').onSnapshot(snap=>{const d=snap.exists?snap.data():{};S.settings=Object.assign(clone(DEFAULTS),clone(d));GH.denied=false;
     if(firstMs===null){firstMs=S.settings.monthStart;S.label=curLabel();subscribePeriod();}
     else if(firstMs!==S.settings.monthStart){firstMs=S.settings.monthStart;subscribePeriod();}
+    try{if(S.settings.pin)localStorage.setItem('moneybook.pinOn','1');else localStorage.removeItem('moneybook.pinOn');}catch(e){}
+    if(!S.settings.pin&&S.pinPending){S.locked=false;}S.pinPending=false;
     if(!S.settingsReady&&S.settings.pin&&!S.unlockedOnce)S.locked=true;
     S.settingsReady=true;if(!snap.metadata.fromCache)applyRecurring();render();},()=>render());
   render();}
@@ -755,6 +761,7 @@ function startAuth(){if(!window.firebase||!firebase.initializeApp){S.fbMissing=t
   firebase.auth().getRedirectResult().catch(e=>{S.loginErr=authErr(e);render();});
   firebase.auth().onAuthStateChanged(u=>{S.user=u;S.loginBusy=false;if(u){if(!S.db)startDb();}else{S.needSetup=true;}render();});}
 (function boot(){if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{});
+  try{if(localStorage.getItem('moneybook.pinOn')==='1'){S.locked=true;S.pinPending=true;}}catch(e){}
   render();startAuth();
 })();
 })();

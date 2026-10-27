@@ -428,3 +428,6 @@ textarea.in-t{min-height:130px;resize:vertical;font-size:14px}
 .foot p{margin:0}
 
 .card p.muted{white-space:pre-line}
+
+html.locked,html.locked body{overflow:hidden;overscroll-behavior:none;height:100%}
+.lock{touch-action:none;overscroll-behavior:none;user-select:none;-webkit-user-select:none}

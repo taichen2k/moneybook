@@ -70,7 +70,7 @@ function calc(str){const s=String(str).replace(/[,\s원]/g,'').replace(/×/g,'*'
 function dbErr(e){const c=e&&e.code;if(c==='quota_exceeded')return '저장 공간이 가득 찼어요. 오래된 내역을 정리해 주세요.';if(c==='invalid_argument')return '이 계정은 보기 전용이라 저장할 수 없어요.';if(c==='revoked')return '접근 권한이 바뀌었어요. 페이지를 새로 열어주세요.';return '저장하지 못했어요. 네트워크를 확인하고 다시 시도해 주세요.';}
 
 /* ---------- 깃허브 동기화 저장소 ----------
-   비공개 저장소(예: taichen2k/candoit-backup)의 moneybook/ 폴더에 파일로 저장해요.
+   비공개 저장소(taichen2k/moneybook-backup)의 data/ 폴더에 파일로 저장해요.
    ledger.json(설정) · tx_YYYY-MM.json(월별 내역) · memo.json(월 메모)
    각 기록에 수정 시각(_u)을 붙여, 두 폰이 동시에 고쳐도 최신 것으로 합쳐요. 토큰은 이 기기에만 저장돼요. */
 let deferredInstall=null;
@@ -89,7 +89,7 @@ function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';render();}if(!m)GH.lastOk=Da
 async function ghTest(repo,token){const r=await fetch('https://api.github.com/repos/'+repo,{cache:'no-store',headers:{Authorization:'Bearer '+token,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}});
   if(r.status===401)throw new Error('토큰이 맞지 않거나 만료됐어요.');if(r.status===404)throw new Error('저장소를 찾을 수 없어요. 이름과 토큰 권한(이 저장소 선택)을 확인하세요.');
   if(!r.ok)throw new Error('깃허브 오류 '+r.status);const j=await r.json();if(j.permissions&&j.permissions.push===false)throw new Error('이 토큰은 읽기만 돼요. Contents 읽기·쓰기 권한이 필요해요.');return j;}
-function makeGhDb(cfg){const dir=(cfg.dir||'moneybook').replace(/^\/+|\/+$/g,'');const F={};
+function makeGhDb(cfg){const dir=(cfg.dir||'data').replace(/^\/+|\/+$/g,'');const F={};
   const api=(name,opt)=>fetch(`https://api.github.com/repos/${cfg.repo}/contents/${dir}/${name}.json`,Object.assign({cache:'no-store'},opt||{},{headers:Object.assign({Authorization:'Bearer '+cfg.token,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},(opt&&opt.headers)||{})}));
   function file(name){if(!F[name]){let c=null;try{c=JSON.parse(localStorage.getItem('moneybook.f.'+name)||'null');}catch(e){}
     F[name]={name,docs:(c&&c.docs)||{},del:(c&&c.del)||{},sha:(c&&c.sha)||null,etag:null,loaded:!!c,synced:false,dirty:!!(c&&c.dirty),ls:new Set(),pulling:null,pushT:0,pushing:false,again:false};
@@ -485,9 +485,13 @@ const SHEETS={
   ${ios?`<ol class="steps"><li><b>사파리</b>로 이 주소를 열어주세요.</li><li>아래쪽 <b>공유 버튼</b>(네모에 화살표)을 누르세요.</li><li><b>홈 화면에 추가</b>를 누르고 <b>추가</b>를 누르면 끝이에요.</li></ol>`:
   `<ol class="steps"><li><b>크롬</b>이나 <b>삼성 인터넷</b>으로 이 주소를 열어주세요.</li><li>오른쪽 위(삼성 인터넷은 아래) <b>메뉴 ⋮ / ≡</b>를 누르세요.</li><li><b>앱 설치</b> 또는 <b>홈 화면에 추가</b>를 누르면 끝이에요.</li></ol>`}
   <p class="muted">설치하면 주소창 없이 앱처럼 열리고, 폰마다 처음 한 번만 동기화 연결을 하면 돼요.</p>`;},
- sync(){const c=ghCfg()||{};const t=GH.lastOk?new Date(GH.lastOk):null;return head('동기화 연결')+`<div class="kv num"><div><span>저장소</span><b>${esc(c.repo||'-')}</b></div><div><span>폴더</span><b>${esc(c.dir||'moneybook')}</b></div>
+ sync(){const c=ghCfg()||{};const t=GH.lastOk?new Date(GH.lastOk):null;return head('동기화 연결')+`<div class="kv num"><div><span>저장소</span><b>${esc(c.repo||'-')}</b></div><div><span>폴더</span><b>${esc(c.dir||'data')}</b></div>
   <div><span>상태</span><b class="${GH.err?'exp':''}">${GH.err?'끊김':S.db&&S.db.pending()?'보내는 중':'정상'}</b></div><div><span>마지막 확인</span><b>${t?pad(t.getHours())+':'+pad(t.getMinutes())+':'+pad(t.getSeconds()):'-'}</b></div></div>
   ${GH.err?`<div class="err">${esc(GH.err)}</div>`:''}<p class="muted">폰들은 20초마다, 그리고 앱을 다시 열 때마다 서로 맞춰요. 인터넷이 끊겨도 이 폰에 먼저 저장하고, 연결되면 보내요.</p>
+  <div class="card" style="background:var(--bg);margin-top:14px"><h3>하루 백업</h3><p class="muted" style="margin:0 0 8px">하루에 한 번, 앱을 열 때 전체 장부를 backups 폴더에 통째로 저장해요. 최근 7일치를 보관해요.</p>
+  ${S.bkList?(S.bkList.length?`<div class="chips">${S.bkList.map(d=>`<button class="chip ${S.bkPick===d?'on':''}" data-act="bkPick" data-k="${d}">${d.slice(5).replace('-','.')}</button>`).join('')}</div>
+    ${S.bkPick?`<p class="muted">${S.bkPick} 백업으로 되돌리면 그날 상태의 내역·설정이 다시 써져요. 그 뒤에 새로 적은 내역은 지워지지 않아요.</p><button class="btn danger ${S.bkAsk?'go':''} wide2" data-act="bkRestore">${S.bkAsk?'정말 되돌리기':S.bkPick+' 백업으로 되돌리기'}</button>`:''}`:'<p class="muted">아직 백업이 없어요.</p>'):'<p class="muted">불러오는 중…</p>'}
+  <button class="btn wide2" style="margin-top:8px" data-act="bkNow">지금 백업</button></div>
   <div class="acts"><button class="btn danger ${S.ghOffAsk?'go':''}" data-act="ghOff">${S.ghOffAsk?'정말 연결 끊기':'연결 끊기'}</button><button class="btn pri" data-act="ghSyncNow">지금 동기화</button></div>`;},
  monthStart(){const s=S.settings.monthStart||1;return head('월 시작일')+`<p style="margin:0;font-size:14px;color:var(--muted)">월급날에 맞춰 한 달을 계산하고 싶을 때 바꾸세요. 예를 들어 25일로 하면 ‘10월’은 10월 25일부터 11월 24일까지예요.</p>
   <div class="f"><label for="ms">매월</label><select class="in-t" id="ms">${Array.from({length:28},(_,i)=>`<option value="${i+1}" ${s===i+1?'selected':''}>${i+1}일부터</option>`).join('')}</select></div>
@@ -582,8 +586,11 @@ const ACT={
  favUse(el){const x=S.settings.favorites[+el.dataset.i];if(!x)return;openTx(null);Object.assign(S.form,{type:x.type,amountStr:String(x.amount),cat:x.cat||'',sub:x.sub||'',acc:x.acc||S.form.acc,to:x.to||'',memo:x.memo||''});renderSheet();},
  async ghConnect(){const repo=(document.getElementById('gh-repo').value||'').trim().replace(/^https?:\/\/github\.com\//,'').replace(/\/$/,'');const token=(document.getElementById('gh-token').value||'').trim();
   if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){S.setupErr='저장소는 아이디/저장소 형식으로 적어주세요.';render();return;}if(!token){S.setupErr='토큰을 붙여넣어 주세요.';render();return;}
-  S.setupBusy=true;S.setupErr='';render();try{await ghTest(repo,token);ghSave({repo,token,dir:'moneybook'});S.setupBusy=false;startDb(ghCfg());toast('연결했어요');}catch(e){S.setupBusy=false;S.setupErr=e.message;render();}},
- async ghUseCandoit(){const c=candoitCfg();if(!c)return;S.setupBusy=true;render();try{await ghTest(c.repo,c.token);ghSave({repo:c.repo,token:c.token,dir:'moneybook'});S.setupBusy=false;startDb(ghCfg());toast('연결했어요');}catch(e){S.setupBusy=false;S.setupErr=e.message;render();}},
+  S.setupBusy=true;S.setupErr='';render();try{await ghTest(repo,token);ghSave({repo,token,dir:'data'});S.setupBusy=false;startDb(ghCfg());toast('연결했어요');}catch(e){S.setupBusy=false;S.setupErr=e.message;render();}},
+ async ghUseCandoit(){const c=candoitCfg();if(!c)return;const repo=((document.getElementById('gh-repo')||{}).value||'taichen2k/moneybook-backup').trim();S.setupBusy=true;render();try{await ghTest(repo,c.token);ghSave({repo,token:c.token,dir:'data'});S.setupBusy=false;startDb(ghCfg());toast('연결했어요');}catch(e){S.setupBusy=false;S.setupErr=e.message;render();}},
+ bkPick(el){S.bkPick=S.bkPick===el.dataset.k?'':el.dataset.k;S.bkAsk=false;renderSheet();},
+ async bkNow(){toast('백업하는 중이에요');const ok=await dailyBackup(true);toast(ok?'백업했어요':'백업하지 못했어요. 연결 상태를 확인해 주세요');S.bkList=await listBackups().catch(()=>S.bkList);if(S.sheet==='sync')renderSheet();},
+ async bkRestore(){if(!S.bkAsk){S.bkAsk=true;renderSheet();return;}S.bkAsk=false;toast('되돌리는 중이에요');try{const n=await restoreBackup(S.bkPick);toast(n+'건을 '+S.bkPick+' 상태로 되돌렸어요');closeSheet();}catch(e){toast(e.message||'되돌리지 못했어요');}},
  ghSyncNow(){if(S.db){S.db.syncAll();toast('동기화하는 중이에요');}},
  ghOff(el){if(!S.ghOffAsk){S.ghOffAsk=true;renderSheet();return;}S.ghOffAsk=false;ghSave(null);try{Object.keys(localStorage).filter(k=>k.startsWith('moneybook.f.')).forEach(k=>localStorage.removeItem(k));}catch(e){}location.reload();},
  async install(){if(deferredInstall){const e=deferredInstall;deferredInstall=null;try{e.prompt();await e.userChoice;}catch(x){}render();return;}openSheet('install');},
@@ -639,7 +646,7 @@ const ACT={
   if(k==='accounts')S.accDraft=clone(S.settings.accounts);
   if(k==='recurring')S.recDraft={type:'exp',day:new Date().getDate(),amount:0,cat:'',acc:lastAcc(),to:'',memo:'',now:false};
   if(k==='pin')S.pinDraft=null;
-  if(k==='sync')S.ghOffAsk=false;
+  if(k==='sync'){S.ghOffAsk=false;S.bkList=null;S.bkPick='';S.bkAsk=false;listBackups().then(l=>{S.bkList=l;if(S.sheet==='sync')renderSheet();}).catch(()=>{S.bkList=[];if(S.sheet==='sync')renderSheet();});}
   if(k==='favorites')S.favEdit=false;
   if(k==='cats'){S.catType='exp';S.catEdit=-1;S.catDelAsk=-1;}
   openSheet(k);setTimeout(()=>{const t=document.getElementById(k==='sms'?'sms-text':k==='search'?'q':'');if(t)t.focus();},60);},
@@ -702,22 +709,40 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){S.hiddenAt
 /* ---------- boot ---------- */
 S.label=curLabel();render();
 function setupHtml(){const c=candoitCfg();return `<div class="setup-logo"><img src="logo.png" alt="티끌모아"></div><div class="card setup"><h3>깃허브 동기화 연결</h3>
-  <p class="muted">가계부는 내 깃허브 <b>비공개 저장소</b>의 moneybook 폴더에 저장돼요. 폰마다 한 번만 연결하면 여러 폰에서 같은 장부를 써요. 토큰은 이 기기에만 저장돼요.</p>
-  ${c?`<button class="btn pri wide2" data-act="ghUseCandoit">할수있어 연결 정보로 시작 (${esc(c.repo)})</button><p class="muted" style="text-align:center;margin:10px 0">또는 직접 입력</p>`:''}
-  <div class="f"><label for="gh-repo">저장소 (아이디/저장소)</label><input class="in-t" id="gh-repo" value="${esc((c&&c.repo)||'taichen2k/candoit-backup')}" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+  <p class="muted">가계부는 내 깃허브 <b>비공개 저장소</b>(moneybook-backup)에 저장돼요. 폰마다 한 번만 연결하면 여러 폰에서 같은 장부를 써요. 토큰은 이 기기에만 저장돼요.</p>
+  <div class="f"><label for="gh-repo">저장소 (아이디/저장소)</label><input class="in-t" id="gh-repo" value="taichen2k/moneybook-backup" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
   <div class="f"><label for="gh-token">토큰</label><input class="in-t" id="gh-token" type="password" placeholder="github_pat_로 시작" autocomplete="off"></div>
   <div class="err">${esc(S.setupErr||'')}</div><div class="acts"><button class="btn pri" data-act="ghConnect">${S.setupBusy?'확인 중…':'연결'}</button></div>
+  ${c?`<button class="btn wide2" style="margin-top:10px" data-act="ghUseCandoit">할수있어에 넣어 둔 토큰으로 연결</button><p class="muted" style="margin:6px 2px 0">그 토큰에 moneybook-backup 저장소도 허용돼 있어야 해요.</p>`:''}
   <details class="howto"><summary>토큰 만드는 법</summary><ol>
   <li>깃허브 → 오른쪽 위 프로필 → Settings → Developer settings → Personal access tokens → <b>Fine-grained tokens</b> → Generate new token</li>
   <li>Repository access: <b>Only select repositories</b> → 위 저장소 하나만 선택</li>
   <li>Permissions → Repository permissions → <b>Contents: Read and write</b></li>
   <li>만든 토큰(github_pat_…)을 복사해서 위 칸에 붙여넣기</li></ol></details></div>`;}
+const ghH=cfg=>({Authorization:'Bearer '+cfg.token,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'});
+async function dailyBackup(force){const cfg=ghCfg();if(!cfg||!S.db)return false;const d=today();if(!force){try{if(localStorage.getItem('moneybook.lastBackup')===d)return false;}catch(e){}}
+  try{const ms=allMonths();await ensureMonths(ms,true);const snap={v:1,at:new Date().toISOString(),settings:S.settings,tx:{},memo:[]};
+    ms.forEach(ym=>{snap.tx[ym]=txOf(ym);});try{const m=await S.db.collection('memo').get();snap.memo=m.docs.map(x=>Object.assign({ym:x.id},x.data()));}catch(e){}
+    const H=ghH(cfg);const base=`https://api.github.com/repos/${cfg.repo}/contents/backups`;
+    let sha=null;const ex=await fetch(base+'/'+d+'.json',{headers:H,cache:'no-store'});if(ex.ok)sha=(await ex.json()).sha;
+    const r=await fetch(base+'/'+d+'.json',{method:'PUT',headers:H,body:JSON.stringify(Object.assign({message:'티끌모아 하루 백업 '+d,content:b64e(JSON.stringify(snap))},sha?{sha}:{}))});
+    if(!r.ok)return false;try{localStorage.setItem('moneybook.lastBackup',d);}catch(e){}
+    const l=await fetch(base,{headers:H,cache:'no-store'});if(l.ok){const list=(await l.json()).filter(x=>/^\d{4}-\d{2}-\d{2}\.json$/.test(x.name)).sort((a,b)=>b.name.localeCompare(a.name));
+      for(const old of list.slice(7))await fetch(base+'/'+old.name,{method:'DELETE',headers:H,body:JSON.stringify({message:'오래된 백업 정리',sha:old.sha})}).catch(()=>{});}
+    return true;}catch(e){return false;}}
+async function listBackups(){const cfg=ghCfg();if(!cfg)return [];const r=await fetch(`https://api.github.com/repos/${cfg.repo}/contents/backups`,{headers:ghH(cfg),cache:'no-store'});
+  if(!r.ok)return [];return (await r.json()).filter(x=>/^\d{4}-\d{2}-\d{2}\.json$/.test(x.name)).map(x=>x.name.slice(0,10)).sort().reverse();}
+async function restoreBackup(d){const cfg=ghCfg();const r=await fetch(`https://api.github.com/repos/${cfg.repo}/contents/backups/${d}.json`,{headers:ghH(cfg),cache:'no-store'});
+  if(!r.ok)throw new Error('백업 파일을 열 수 없어요');const j=await r.json();const snap=JSON.parse(b64d(j.content));
+  if(snap.settings)await S.db.doc('ledger/settings').set(snap.settings);let n=0;
+  for(const ym in (snap.tx||{}))for(const t of snap.tx[ym]){const b=Object.assign({},t);delete b.id;await S.db.collection('tx_'+ym).doc(t.id).set(b);n++;}
+  for(const m of (snap.memo||[])){const b=Object.assign({},m);delete b.ym;await S.db.doc('memo/'+m.ym).set(b);}return n;}
 function startDb(cfg){S.needSetup=false;S.db=makeGhDb(cfg);let firstMs=null;
   S.db.doc('ledger/settings').onSnapshot(snap=>{const d=snap.exists?snap.data():{};S.settings=Object.assign(clone(DEFAULTS),clone(d));
     if(firstMs===null){firstMs=S.settings.monthStart;S.label=curLabel();subscribePeriod();}
     else if(firstMs!==S.settings.monthStart){firstMs=S.settings.monthStart;subscribePeriod();}
     if(!S.settingsReady&&S.settings.pin&&!S.unlockedOnce)S.locked=true;
-    S.settingsReady=true;if(!snap.metadata.fromCache)applyRecurring();render();});
+    S.settingsReady=true;if(!snap.metadata.fromCache){applyRecurring();if(!S.bkTimer)S.bkTimer=setTimeout(()=>dailyBackup(false),8000);}render();});
   render();}
 (function boot(){const cfg=ghCfg();if(!cfg){S.needSetup=true;render();return;}startDb(cfg);
   if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{});

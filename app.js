@@ -84,7 +84,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=10; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=11; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -107,6 +107,7 @@ function saveSettings(patch){S.settings=Object.assign({},S.settings,patch);rende
 function subscribePeriod(){S.unsubs.forEach(u=>u());S.unsubs=[];S.live={};S.loaded=false;const p=period(S.label);let got=0;
   p.months.forEach(ym=>{const u=S.db.collection('tx_'+ym).onSnapshot(snap=>{
       S.live[ym]=snap.docs.map(d=>Object.assign({id:d.id},d.data()));S.cache[ym]=S.live[ym];
+      if(snap.docs.length&&S.settingsReady&&!snap.metadata.fromCache&&S.canWrite&&!(S.settings.months||{})[ym])saveSettings({months:Object.assign({},S.settings.months,{[ym]:true})});
       if(!S.loaded){got++;if(got>=p.months.length)S.loaded=true;}
       render();
     },e=>{S.sync='off';render();});S.unsubs.push(u);});}
@@ -229,7 +230,7 @@ function settleHtml(p){const prevP=period(shiftLabel(S.label,-1));const miss=pre
   return `<div class="card"><div class="ovh"><h3>예산</h3><button class="mini" data-act="open" data-k="budget">예산설정 ›</button></div>${bud}</div>
   <div class="card"><div class="ovh"><h3>자산</h3><span class="muted num">${dot2(p.start)} ~ ${dot2(p.last)}</span></div>
   <div class="kv num"><div><span>전월대비 지출 (당월/전월)</span><b>${pt.exp?Math.round(t.exp/pt.exp*100)+'%':'-'}</b></div><div><span>지출 (현금, 은행)</span><b>${won(cb)}원</b></div><div><span>지출 (카드)</span><b>${won(cd)}원</b></div><div><span>이체 (현금, 은행 →)</span><b>${won(tr)}원</b></div></div></div>
-  <button class="btn wide" data-act="export" data-k="month">이번 달 엑셀(CSV) 파일로 저장</button>`;}
+  <button class="btn wide" data-act="export" data-k="month">이번 달 엑셀 파일로 저장</button>`;}
 
 function memoHtml(){const ym=S.label;if(!S.memo||S.memo.ym!==ym){S.memo={ym,text:'',loaded:false,saved:''};const mm=S.memo;
     S.db.doc('memo/'+ym).get().then(sn=>{if(S.memo!==mm)return;mm.text=sn.exists?(sn.data().text||''):'';mm.saved=mm.text;mm.loaded=true;render();}).catch(()=>{mm.loaded=true;render();});}
@@ -297,8 +298,8 @@ function moreHtml(){const st=S.settings;const bt=st.budget&&st.budget.total;
   <button data-act="open" data-k="sync"><span>계정·동기화·백업</span><small>${GH.err?'<span class="exp">끊김</span>':esc((S.user&&S.user.email)||'')}</small></button>
   <button data-act="open" data-k="pin"><span>비밀번호 잠금</span><small>${st.pin?'사용 중':'사용 안 함'}</small></button></div>
   <div class="menu">
-  <button data-act="export" data-k="month"><span>이번 달 엑셀(CSV) 내보내기</span><small>›</small></button>
-  <button data-act="export" data-k="all"><span>전체 내역 엑셀(CSV) 내보내기</span><small>›</small></button></div>
+  <button data-act="export" data-k="month"><span>이번 달 엑셀로 내보내기</span><small>›</small></button>
+  <button data-act="export" data-k="all"><span>전체 내역 엑셀로 내보내기</span><small>›</small></button></div>
   <div class="card help"><h3>여러 휴대폰에서 같이 쓰기</h3>
   <p><b>내 폰·PC 여러 대</b> — 각 기기에서 이 주소를 열고 같은 구글 계정으로 로그인하면 끝이에요. 한쪽에서 입력하면 다른 기기에 바로 나타나요.</p>
   <p><b>가족과 함께</b> — 가족 구글 계정을 허용 목록에 넣으면 같은 장부에 함께 적을 수 있어요. 필요하면 Claude에게 부탁하세요.</p>
@@ -488,14 +489,33 @@ function parseOne(raw){const s=raw.replace(/\r/g,'').trim();let amount=0,m;const
 function parseSms(text){return text.split(/\[Web발신\]|\n\s*\n/).map(x=>x.trim()).filter(x=>/[\d,]+\s*원/.test(x)).map(parseOne).filter(Boolean);}
 
 /* ---------- export ---------- */
-async function doExport(scope){
-  let list,name;if(scope==='month'){list=txIn(period(S.label));name='가계부_'+S.label+'.csv';}
-  else{await ensureMonths(allMonths(),true);list=allMonths().flatMap(txOf);name='가계부_전체_'+today()+'.csv';}
-  if(!list.length){toast('내보낼 내역이 없어요');return;}
-  const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
-  const rows=[['날짜','시간','구분','분류','소분류','금액','자산','받는 자산','내용','메모']].concat(list.sort((a,b)=>a.date.localeCompare(b.date)).map(t=>[t.date,t.time||'',TYPE_NAME[t.type],t.cat||'',t.sub||'',t.amount,accName(t.acc),t.to?accName(t.to):'',t.memo||'',t.note||'']));
-  const csv='﻿'+rows.map(r=>r.map(q).join(',')).join('\r\n');
-  try{const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);toast('파일을 저장했어요');}catch(e){toast('파일을 저장하지 못했어요');}}
+const XLSX_URL='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+function loadXLSX(){if(window.XLSX)return Promise.resolve(window.XLSX);return new Promise((ok,no)=>{const sc=document.createElement('script');sc.src=XLSX_URL;sc.onload=()=>ok(window.XLSX);sc.onerror=no;document.head.appendChild(sc);});}
+function stamp(){const n=new Date();return n.getFullYear()+pad(n.getMonth()+1)+pad(n.getDate())+'_'+pad(n.getHours())+pad(n.getMinutes())+pad(n.getSeconds());}
+async function doExport(scope){if(S.exporting)return;S.exporting=true;toast('엑셀 파일을 만드는 중이에요');
+  try{let list;if(scope==='month'){list=txIn(period(S.label));}else{await ensureMonths(allMonths(),true);list=allMonths().flatMap(txOf);}
+    if(!list.length){toast('내보낼 내역이 없어요');return;}
+    let X;try{X=await loadXLSX();}catch(e){toast('엑셀 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요');return;}
+    list=list.slice().sort((a,b)=>a.date.localeCompare(b.date)||(a.time||'').localeCompare(b.time||''));
+    const money=ws=>{for(const k in ws){if(k[0]!=='!'&&ws[k].t==='n')ws[k].z='#,##0';}return ws;};
+    const wb=X.utils.book_new();
+    // 1. 내역
+    const rows=list.map(t=>({'날짜':t.date,'시간':t.time||'','구분':TYPE_NAME[t.type],'자산':accName(t.acc),'받는 자산':t.to?accName(t.to):'','분류':t.cat||'','소분류':t.sub||'','내용':t.memo||'','금액':t.amount,'메모':t.note||''}));
+    const w1=money(X.utils.json_to_sheet(rows));w1['!cols']=[{wch:11},{wch:6},{wch:5},{wch:16},{wch:12},{wch:14},{wch:10},{wch:30},{wch:12},{wch:26}];w1['!autofilter']={ref:w1['!ref']};
+    X.utils.book_append_sheet(wb,w1,'내역');
+    // 2. 월별 합계
+    const mon={};list.forEach(t=>{const k=t.date.slice(0,7);const o=mon[k]=mon[k]||{i:0,e:0};if(t.type==='inc')o.i+=t.amount;else if(t.type==='exp')o.e+=t.amount;});
+    const mrows=Object.keys(mon).sort().map(k=>({'월':k,'수입':mon[k].i,'지출':mon[k].e,'합계':mon[k].i-mon[k].e}));
+    const tot=mrows.reduce((a,r)=>({i:a.i+r['수입'],e:a.e+r['지출']}),{i:0,e:0});mrows.push({'월':'합계','수입':tot.i,'지출':tot.e,'합계':tot.i-tot.e});
+    const w2=money(X.utils.json_to_sheet(mrows));w2['!cols']=[{wch:10},{wch:14},{wch:14},{wch:14}];X.utils.book_append_sheet(wb,w2,'월별 합계');
+    // 3. 분류별 지출 (연도별)
+    const exps=list.filter(t=>t.type==='exp');const years=[...new Set(exps.map(t=>t.date.slice(0,4)))].sort();const by={};
+    exps.forEach(t=>{const c=t.cat||'미분류';const y=t.date.slice(0,4);(by[c]=by[c]||{})[y]=(by[c][y]||0)+t.amount;});
+    const crows=Object.keys(by).map(c=>{const r={'분류':c};let sum=0;years.forEach(y=>{r[y+'년']=by[c][y]||0;sum+=by[c][y]||0;});r['합계']=sum;return r;}).sort((a,b)=>b['합계']-a['합계']);
+    if(crows.length){const tr={'분류':'합계'};years.forEach(y=>tr[y+'년']=crows.reduce((a,r)=>a+r[y+'년'],0));tr['합계']=crows.reduce((a,r)=>a+r['합계'],0);crows.push(tr);}
+    const w3=money(X.utils.json_to_sheet(crows));w3['!cols']=[{wch:16}].concat(years.map(()=>({wch:13})),[{wch:14}]);X.utils.book_append_sheet(wb,w3,'분류별 지출');
+    const name='티끌모아_'+stamp()+'.xlsx';X.writeFile(wb,name,{compression:true});toast('내역 '+list.length+'건을 엑셀로 저장했어요');
+  }catch(e){toast('엑셀 파일을 만들지 못했어요');}finally{S.exporting=false;}}
 
 /* ---------- actions ---------- */
 function readForm(){const f=S.form;if(!f)return;const g=id=>document.getElementById(id);
@@ -547,7 +567,7 @@ const ACT={
   try{Object.keys(localStorage).filter(k=>k.startsWith('moneybook.f.')).forEach(k=>localStorage.removeItem(k));}catch(e){}location.reload();},
  logout(){if(!S.ghOffAsk){S.ghOffAsk=true;renderSheet();return;}S.ghOffAsk=false;ACT.logoutNow();},
  async bkFile(){toast('백업 파일을 만드는 중이에요');try{const snap=await fullSnapshot();const n=Object.values(snap.tx).reduce((a,l)=>a+l.length,0);
-  const url=URL.createObjectURL(new Blob([JSON.stringify(snap)],{type:'application/json'}));const a=document.createElement('a');a.href=url;const nw=new Date();a.download='티끌모아_'+nw.getFullYear()+pad(nw.getMonth()+1)+pad(nw.getDate())+'_'+pad(nw.getHours())+pad(nw.getMinutes())+pad(nw.getSeconds())+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);toast('내역 '+n+'건을 백업 파일로 저장했어요');}catch(e){toast('백업 파일을 만들지 못했어요');}},
+  const url=URL.createObjectURL(new Blob([JSON.stringify(snap)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='티끌모아_'+stamp()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);toast('내역 '+n+'건을 백업 파일로 저장했어요');}catch(e){toast('백업 파일을 만들지 못했어요');}},
  async bkRestore(){if(!S.bkData)return;if(!S.bkAsk){S.bkAsk=true;renderSheet();return;}S.bkAsk=false;toast('넣는 중이에요. 화면을 닫지 마세요');try{const n=await restoreSnapshot(S.bkData,(d,t)=>{S.bkInfo=`넣는 중… ${d} / ${t}`;if(S.sheet==='sync')renderSheet();});S.bkData=null;S.bkInfo='';toast(n+'건을 넣었어요');closeSheet();ensureMonths(allMonths(),true);}catch(e){toast('되돌리지 못했어요');}},
  fTab(el){S.fTab=el.dataset.k;renderSheet();},
  fReset(){S.filter={inc:[],exp:[],acc:[]};render();if(S.sheet==='filter')renderSheet();},

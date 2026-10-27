@@ -84,7 +84,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=7; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=8; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -114,7 +114,7 @@ async function ensureMonths(list,force){const need=list.filter(ym=>!S.live[ym]&&
   if(!need.length)return;need.forEach(m=>S.fetching.add(m));
   await Promise.all(need.map(async ym=>{try{if(!S.settings.months[ym]){S.cache[ym]=[];return;}const snap=await S.db.collection('tx_'+ym).get();S.cache[ym]=snap.docs.map(d=>Object.assign({id:d.id},d.data()));}catch(e){S.cache[ym]=S.cache[ym]||[];}finally{S.fetching.delete(ym);}}));
   render();}
-async function writeTx(t,orig){const ym=t.date.slice(0,7);const id=(orig&&orig.id)||newId();const body={type:t.type,date:t.date,amount:t.amount,cat:t.cat||'',sub:t.sub||'',acc:t.acc||'',to:t.to||'',memo:t.memo||'',time:t.time||'',created:t.created||Date.now(),updated:Date.now()};
+async function writeTx(t,orig){const ym=t.date.slice(0,7);const id=(orig&&orig.id)||newId();const body={type:t.type,date:t.date,amount:t.amount,cat:t.cat||'',sub:t.sub||'',acc:t.acc||'',to:t.to||'',memo:t.memo||'',note:t.note||'',time:t.time||'',created:t.created||Date.now(),updated:Date.now()};
   if(t.auto)body.auto=true;
   if(orig&&orig.ym!==ym)await S.db.collection('tx_'+orig.ym).doc(orig.id).delete();
   await S.db.collection('tx_'+ym).doc(id).set(body);
@@ -163,7 +163,7 @@ function renderTop(){const top=$('#top');const sc=!S.db?'off':GH.err?'off':S.db.
   top.innerHTML=h;}
 
 function rowHtml(t){const isT=t.type==='trf';const name=isT?'이체':(t.cat||'미분류')+(t.sub?' › '+t.sub:'');
-  const acc=isT?`${esc(accName(t.acc))} → ${esc(accName(t.to))}`:esc(accName(t.acc))+(t.time?' · '+esc(t.time):'')+(t.auto?' · 반복':'');
+  const acc=isT?`${esc(accName(t.acc))} → ${esc(accName(t.to))}`:esc(accName(t.acc))+(t.note?' · '+esc(t.note):'')+(t.auto?' · 반복':'');
   const cls=t.type==='exp'?'exp':t.type==='inc'?'inc':'trf';
   return `<button class="row" data-act="edit" data-id="${esc(t.id)}" data-ym="${t.date.slice(0,7)}"><span class="c">${esc(name)}</span><span class="t">${t.memo?`<b>${esc(t.memo)}</b><small>${acc}</small>`:`<small class="solo">${acc}</small>`}</span><span class="a num ${cls}">${won(t.amount)}원</span></button>`;}
 
@@ -351,6 +351,7 @@ const SHEETS={
   <div class="frow ${f.panel==='amt'?'act':''}"><span class="fl">금액</span><button class="fv amtv num" data-act="panel" data-k="amt">${f.amountStr?fmtExpr(f.amountStr)+(ops&&!isNaN(val)?` <small>= ${won(val)}원</small>`:'원'):'<span class="ph">&nbsp;</span>'}</button>${f.type==='trf'?`<button class="feeb num ${f.panel==='fee'||calc(f.feeStr||'')>0?'on':''}" data-act="panel" data-k="fee">${calc(f.feeStr||'')>0?'수수료 '+won(calc(f.feeStr)):'수수료'}</button>`:''}</div>
   ${f.type==='trf'?`<div class="swapw">${frow('출금','acc',f.acc?esc(accName(f.acc)):'')+frow('입금','to',f.to?esc(accName(f.to)):'')}<button class="swapb" data-act="swapAcc" aria-label="출금과 입금 바꾸기">↓↑</button></div>`:frow('분류','cat',catTxt)+frow('자산','acc',f.acc?esc(accName(f.acc)):'')}
   <div class="frow"><span class="fl">내용</span><input class="fv" id="f-memo" placeholder="" value="${esc(f.memo)}" autocomplete="off" data-act="memoFocus"></div>
+  <div class="frow"><span class="fl">메모</span><input class="fv" id="f-note" placeholder="가게 이름 등" value="${esc(f.note||'')}" autocomplete="off" data-act="memoFocus"></div>
   ${edit?'':`<label class="chk"><input type="checkbox" id="f-fav" ${f.fav?'checked':''}> 자주 쓰는 내역에 추가</label>`}
   <div class="err" id="f-err">${esc(f.err)}</div>
   ${f.panel?'':`<div class="acts">${edit?`<button class="btn danger ${f.confirmDel?'go':''}" data-act="delTx">${f.confirmDel?'정말 삭제':'삭제'}</button>`:'<button class="btn" data-act="saveTx" data-k="more">계속 입력</button>'}<button class="btn pri" data-act="saveTx">저장</button></div>`}</div>`;
@@ -368,7 +369,7 @@ const SHEETS={
   return h;},
 
  search(){const q=S.search.trim();const ms=allMonths();const loading=ms.some(ym=>!S.live[ym]&&!S.cache[ym]);
-  let res=[];if(q&&!loading){const ql=q.toLowerCase().replace(/,/g,'');res=ms.flatMap(txOf).filter(t=>(t.memo||'').toLowerCase().includes(ql)||(t.cat||'').toLowerCase().includes(ql)||(t.sub||'').toLowerCase().includes(ql)||String(t.amount).includes(ql)||accName(t.acc).toLowerCase().includes(ql)).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,200);}
+  let res=[];if(q&&!loading){const ql=q.toLowerCase().replace(/,/g,'');res=ms.flatMap(txOf).filter(t=>((t.memo||'')+' '+(t.note||'')).toLowerCase().includes(ql)||(t.cat||'').toLowerCase().includes(ql)||(t.sub||'').toLowerCase().includes(ql)||String(t.amount).includes(ql)||accName(t.acc).toLowerCase().includes(ql)).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,200);}
   const sum=totals(res);
   return `<div class="txb fl0"><div class="txh"><button class="x" data-act="close" aria-label="닫기">←</button><h2>검색</h2></div>
   <div class="sbox">${HICON.search}<input id="q" placeholder="가게 이름, 분류, 금액, 카드" value="${esc(S.search)}" autocomplete="off" enterkeyhint="search"></div></div>
@@ -492,14 +493,14 @@ async function doExport(scope){
   else{await ensureMonths(allMonths(),true);list=allMonths().flatMap(txOf);name='가계부_전체_'+today()+'.csv';}
   if(!list.length){toast('내보낼 내역이 없어요');return;}
   const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
-  const rows=[['날짜','시간','구분','분류','소분류','금액','자산','받는 자산','내용']].concat(list.sort((a,b)=>a.date.localeCompare(b.date)).map(t=>[t.date,t.time||'',TYPE_NAME[t.type],t.cat||'',t.sub||'',t.amount,accName(t.acc),t.to?accName(t.to):'',t.memo||'']));
+  const rows=[['날짜','시간','구분','분류','소분류','금액','자산','받는 자산','내용','메모']].concat(list.sort((a,b)=>a.date.localeCompare(b.date)).map(t=>[t.date,t.time||'',TYPE_NAME[t.type],t.cat||'',t.sub||'',t.amount,accName(t.acc),t.to?accName(t.to):'',t.memo||'',t.note||'']));
   const csv='﻿'+rows.map(r=>r.map(q).join(',')).join('\r\n');
   try{const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);toast('파일을 저장했어요');}catch(e){toast('파일을 저장하지 못했어요');}}
 
 /* ---------- actions ---------- */
 function readForm(){const f=S.form;if(!f)return;const g=id=>document.getElementById(id);
   if(g('f-amt'))f.amountStr=g('f-amt').value;if(g('f-date'))f.date=g('f-date').value;if(g('f-acc'))f.acc=g('f-acc').value;
-  if(g('f-to'))f.to=g('f-to').value;if(g('f-memo'))f.memo=g('f-memo').value;if(g('f-fav'))f.fav=g('f-fav').checked;}
+  if(g('f-to'))f.to=g('f-to').value;if(g('f-memo'))f.memo=g('f-memo').value;if(g('f-note'))f.note=g('f-note').value;if(g('f-fav'))f.fav=g('f-fav').checked;}
 function readRec(){const r=S.recDraft;if(!r)return;const g=id=>document.getElementById(id);
   if(g('r-day'))r.day=+g('r-day').value;if(g('r-amt'))r.amount=calc(g('r-amt').value)||0;if(g('r-cat'))r.cat=g('r-cat').value;if(g('r-acc'))r.acc=g('r-acc').value;if(g('r-to'))r.to=g('r-to').value;if(g('r-memo'))r.memo=g('r-memo').value;if(g('r-now'))r.now=g('r-now').checked;}
 function readAcc(){document.querySelectorAll('[data-acc]').forEach(el=>{const a=S.accDraft[+el.dataset.i];const k=el.dataset.acc;a[k]=k==='init'?(calc(el.value)||0):el.value;});}
@@ -578,7 +579,7 @@ const ACT={
   if(!(amount>0))return err('금액을 입력해 주세요.');if(!f.date)return err('날짜를 골라주세요.');if(!f.acc)return err('자산을 골라주세요.');
   if(f.type==='trf'){if(!f.to)return err('받는 곳을 골라주세요.');if(f.to===f.acc)return err('보내는 곳과 받는 곳이 같아요.');}
   else if(!f.cat)return err('분류를 골라주세요.');
-  const t={type:f.type,date:f.date,amount,cat:f.type==='trf'?'':f.cat,sub:f.type==='trf'?'':(f.sub||''),acc:f.acc,to:f.type==='trf'?f.to:'',memo:f.memo.trim(),time:f.time||'',created:f.created,auto:f.auto};
+  const t={type:f.type,date:f.date,amount,cat:f.type==='trf'?'':f.cat,sub:f.type==='trf'?'':(f.sub||''),acc:f.acc,to:f.type==='trf'?f.to:'',memo:f.memo.trim(),note:(f.note||'').trim(),time:f.time||'',created:f.created,auto:f.auto};
   try{if(!f.orig&&f.inst>1){const n=f.inst;const base=Math.floor(amount/n);for(let i=0;i<n;i++)await writeTx(Object.assign({},t,{date:addMonths(f.date,i),amount:i===n-1?amount-base*(n-1):base,memo:(t.memo||t.cat)+` (할부 ${i+1}/${n})`}));}
     else await writeTx(t,f.orig);}catch(e){return err(dbErr(e));}
   const fee=f.type==='trf'?calc(f.feeStr||''):0;

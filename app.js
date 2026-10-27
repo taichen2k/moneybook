@@ -237,7 +237,7 @@ function renderView(){const v=$('#view');
     if(S.sub==='memo'){v.innerHTML=ro+memoHtml();return;}
     const list=txIn(p).filter(passFilter);
     if(!S.loaded&&!list.length){v.innerHTML=ro+'<div class="empty"><b>내역을 불러오는 중이에요</b></div>';return;}
-    v.innerHTML=ro+fBar()+(list.length?dayGroups(list):filterOn()?'<div class="empty"><b>필터에 맞는 내역이 없어요</b></div>':`<div class="empty"><b>이번 달 기록이 아직 없어요</b>오른쪽 아래 + 버튼으로 첫 지출을 적거나,<br>카드 문자를 복사해서 붙여넣어 보세요.</div>`);return;}
+    v.innerHTML=ro+instBanner()+fBar()+(list.length?dayGroups(list):filterOn()?'<div class="empty"><b>필터에 맞는 내역이 없어요</b></div>':`<div class="empty"><b>이번 달 기록이 아직 없어요</b>오른쪽 아래 + 버튼으로 첫 지출을 적거나,<br>카드 문자를 복사해서 붙여넣어 보세요.</div>`);return;}
   v.classList.remove('flush');
   if(S.tab==='stat'){v.innerHTML=statHtml();return;}
   if(S.tab==='asset'){v.innerHTML=assetHtml();return;}
@@ -481,10 +481,10 @@ const SHEETS={
   ${st.pin?`<div class="f"><label for="lockMin">다시 잠그기</label><select class="in-t" id="lockMin">${[[0,'화면을 벗어나면 바로'],[1,'1분 뒤'],[5,'5분 뒤'],[30,'30분 뒤']].map(([v,n])=>`<option value="${v}" ${(st.lockMin??1)===v?'selected':''}>${n}</option>`).join('')}</select></div>
   <div class="acts"><button class="btn danger" data-act="pinOff">잠금 끄기</button><button class="btn" data-act="pinStart">비밀번호 바꾸기</button></div>`:
   `<div class="acts"><button class="btn pri" data-act="pinStart">비밀번호 설정</button></div>`}`;},
- install(){const ios=isIOS();return head('앱으로 설치')+`<div style="text-align:center;margin:4px 0 14px"><img src="logo.png" alt="티끌모아" style="width:100%;max-width:320px;border-radius:12px"></div>
-  ${ios?`<ol class="steps"><li><b>사파리</b>로 이 주소를 열어주세요.</li><li>아래쪽 <b>공유 버튼</b>(네모에 화살표)을 누르세요.</li><li><b>홈 화면에 추가</b>를 누르고 <b>추가</b>를 누르면 끝이에요.</li></ol>`:
+install(){const ios=isIOS();const pc=isPC();return head('앱으로 설치')+`<div style="text-align:center;margin:4px 0 14px"><img src="logo.png" alt="티끌모아" style="width:100%;max-width:320px;border-radius:12px"></div>
+  ${pc?`<ol class="steps"><li><b>크롬</b>이나 <b>엣지</b>로 이 주소를 열어주세요.</li><li>주소창 오른쪽 끝의 <b>설치 아이콘</b>(모니터에 화살표)을 누르세요. 안 보이면 메뉴 ⋮ → <b>저장 및 공유 → 페이지를 앱으로 설치</b> (엣지는 … → <b>앱 → 이 사이트를 앱으로 설치</b>)</li><li><b>설치</b>를 누르면 바탕화면과 시작 메뉴에 티끌모아가 생겨요.</li></ol>`:ios?`<ol class="steps"><li><b>사파리</b>로 이 주소를 열어주세요.</li><li>아래쪽 <b>공유 버튼</b>(네모에 화살표)을 누르세요.</li><li><b>홈 화면에 추가</b>를 누르고 <b>추가</b>를 누르면 끝이에요.</li></ol>`:
   `<ol class="steps"><li><b>크롬</b>이나 <b>삼성 인터넷</b>으로 이 주소를 열어주세요.</li><li>오른쪽 위(삼성 인터넷은 아래) <b>메뉴 ⋮ / ≡</b>를 누르세요.</li><li><b>앱 설치</b> 또는 <b>홈 화면에 추가</b>를 누르면 끝이에요.</li></ol>`}
-  <p class="muted">설치하면 주소창 없이 앱처럼 열리고, 폰마다 처음 한 번만 동기화 연결을 하면 돼요.</p>`;},
+  <p class="muted">설치하면 주소창 없이 앱처럼 열리고, 기기마다 처음 한 번만 동기화 연결을 하면 돼요. 업데이트는 앱을 열 때 자동으로 받아요.</p>`;},
  sync(){const c=ghCfg()||{};const t=GH.lastOk?new Date(GH.lastOk):null;return head('동기화 연결')+`<div class="kv num"><div><span>저장소</span><b>${esc(c.repo||'-')}</b></div><div><span>폴더</span><b>${esc(c.dir||'data')}</b></div>
   <div><span>상태</span><b class="${GH.err?'exp':''}">${GH.err?'끊김':S.db&&S.db.pending()?'보내는 중':'정상'}</b></div><div><span>마지막 확인</span><b>${t?pad(t.getHours())+':'+pad(t.getMinutes())+':'+pad(t.getSeconds()):'-'}</b></div></div>
   ${GH.err?`<div class="err">${esc(GH.err)}</div>`:''}<p class="muted">폰들은 20초마다, 그리고 앱을 다시 열 때마다 서로 맞춰요. 인터넷이 끊겨도 이 폰에 먼저 저장하고, 연결되면 보내요.</p>
@@ -593,6 +593,7 @@ const ACT={
  async bkRestore(){if(!S.bkAsk){S.bkAsk=true;renderSheet();return;}S.bkAsk=false;toast('되돌리는 중이에요');try{const n=await restoreBackup(S.bkPick);toast(n+'건을 '+S.bkPick+' 상태로 되돌렸어요');closeSheet();}catch(e){toast(e.message||'되돌리지 못했어요');}},
  ghSyncNow(){if(S.db){S.db.syncAll();toast('동기화하는 중이에요');}},
  ghOff(el){if(!S.ghOffAsk){S.ghOffAsk=true;renderSheet();return;}S.ghOffAsk=false;ghSave(null);try{Object.keys(localStorage).filter(k=>k.startsWith('moneybook.f.')).forEach(k=>localStorage.removeItem(k));}catch(e){}location.reload();},
+ instHide(){try{localStorage.setItem('moneybook.instHide',today());}catch(e){}render();},
  async install(){if(deferredInstall){const e=deferredInstall;deferredInstall=null;try{e.prompt();await e.userChoice;}catch(x){}render();return;}openSheet('install');},
  fTab(el){S.fTab=el.dataset.k;renderSheet();},
  fReset(){S.filter={inc:[],exp:[],acc:[]};render();if(S.sheet==='filter')renderSheet();},
@@ -708,7 +709,10 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){S.hiddenAt
   if(S.settings.pin&&!S.locked&&S.hiddenAt&&Date.now()-S.hiddenAt>=(S.settings.lockMin??1)*60000){S.locked=true;S.pinIn='';S.pinErr='';closeSheet();renderLock();}});
 /* ---------- boot ---------- */
 S.label=curLabel();render();
-function setupHtml(){const c=candoitCfg();return `<div class="setup-logo"><img src="logo.png" alt="티끌모아"></div><div class="card setup"><h3>깃허브 동기화 연결</h3>
+const isPC=()=>!/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)&&!(navigator.maxTouchPoints>1&&/Mac/.test(navigator.platform));
+function instBanner(){if(isStandalone())return '';try{if(localStorage.getItem('moneybook.instHide')===today())return '';}catch(e){}
+  return `<div class="ibar"><img src="logo-mark.svg" alt="" width="40" height="40"><div><b>티끌모아 앱 설치</b><span>${isPC()?'PC 바탕화면·작업표시줄에서':'홈 화면 아이콘으로'} 바로 열려요</span></div><button class="btn pri" data-act="install">설치</button><button class="x" data-act="instHide" aria-label="오늘 그만 보기">×</button></div>`;}
+function setupHtml(){const c=candoitCfg();return instBanner()+`<div class="setup-logo"><img src="logo.png" alt="티끌모아"></div><div class="card setup"><h3>깃허브 동기화 연결</h3>
   <p class="muted">가계부는 내 깃허브 <b>비공개 저장소</b>(moneybook-backup)에 저장돼요. 폰마다 한 번만 연결하면 여러 폰에서 같은 장부를 써요. 토큰은 이 기기에만 저장돼요.</p>
   <div class="f"><label for="gh-repo">저장소 (아이디/저장소)</label><input class="in-t" id="gh-repo" value="taichen2k/moneybook-backup" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
   <div class="f"><label for="gh-token">토큰</label><input class="in-t" id="gh-token" type="password" placeholder="github_pat_로 시작" autocomplete="off"></div>
@@ -744,7 +748,7 @@ function startDb(cfg){S.needSetup=false;S.db=makeGhDb(cfg);let firstMs=null;
     if(!S.settingsReady&&S.settings.pin&&!S.unlockedOnce)S.locked=true;
     S.settingsReady=true;if(!snap.metadata.fromCache){applyRecurring();if(!S.bkTimer)S.bkTimer=setTimeout(()=>dailyBackup(false),8000);}render();});
   render();}
-(function boot(){const cfg=ghCfg();if(!cfg){S.needSetup=true;render();return;}startDb(cfg);
-  if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{});
+(function boot(){if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{});
+  const cfg=ghCfg();if(!cfg){S.needSetup=true;render();return;}startDb(cfg);
 })();
 })();

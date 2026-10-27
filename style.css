@@ -396,3 +396,12 @@ textarea.in-t{min-height:130px;resize:vertical;font-size:14px}
 .setup-logo{text-align:center;margin:8px 0 4px}
 .setup-logo img{width:100%;max-width:300px;border-radius:14px}
 .steps{padding-left:22px;line-height:1.7;font-size:16px}
+
+.ibar{display:grid;grid-template-columns:40px 1fr auto auto;gap:10px;align-items:center;background:var(--accent-soft);border-radius:var(--r);padding:10px 8px 10px 12px;margin:0 0 12px}
+.view.flush .ibar{margin:10px 12px}
+.ibar img{border-radius:10px}
+.ibar b{display:block;font-size:16px}
+.ibar span{font-size:13px;color:var(--muted)}
+.ibar .btn{flex:none;padding:9px 16px}
+.ibar .x{width:32px;height:32px}
+@media (min-width:1000px){.app{max-width:760px}.tabs .in{max-width:760px}.fab{right:calc(50% - 380px + 18px)}}

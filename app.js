@@ -203,7 +203,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=50; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=51; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -1210,7 +1210,7 @@ function sugList(q){q=(q||'').trim();if(q.length<2||!S.settings.autoFill||!S.for
   const ms=Object.keys(Object.assign({},S.cache,S.live)).sort().reverse();
   for(const ym of ms){for(const t of txOf(ym).slice().sort((a,b)=>b.date.localeCompare(a.date))){if(t.type!==f.type||!t.memo)continue;const m=t.memo.trim();if(seen.has(m)||!m.includes(q)||m===q)continue;seen.add(m);out.push(t);if(out.length>=4)return out;}}return out;}
 function updSug(){const box=document.getElementById('f-sug');const inp=document.getElementById('f-memo');if(!box||!inp)return;const l=sugList(inp.value);S._sug=l;
-  if(!l.length){box.hidden=true;box.innerHTML='';return;}box.hidden=false;box.innerHTML=l.map((t,i)=>`<button class="sgc" data-act="sugPick" data-i="${i}" title="${esc((t.cat||'')+' · '+accName(t.acc))}">${esc(t.memo)} <small>${won(t.amount)}</small></button>`).join('')+`<button class="sgc off" data-act="sugOffAll">자동 완성 끄기</button><button class="sgc x" data-act="sugClose" aria-label="닫기">×</button>`;}
+  if(!l.length){box.hidden=true;box.innerHTML='';return;}box.hidden=false;box.innerHTML=`<button class="sgc x" data-act="sugClose" aria-label="추천 닫기">×</button><button class="sgc off" data-act="sugOffAll">끄기</button>`+l.map((t,i)=>`<button class="sgc" data-act="sugPick" data-i="${i}" title="${esc((t.cat||'')+' · '+accName(t.acc))}">${esc(t.memo)} <small>${won(t.amount)}</small></button>`).join('');}
 document.addEventListener('input',e=>{const t=e.target;
   if(t.id==='f-memo'&&S.form&&!S.sugOff){clearTimeout(ACT._sgt);ACT._sgt=setTimeout(updSug,250);}
   if(t.id==='f-amt'&&S.form){S.form.amountStr=t.value;const v=calc(t.value);const c=document.getElementById('f-calc');if(c)c.textContent=/[+\-*/×÷−]/.test(t.value.replace(/^-/,''))&&!isNaN(v)?'= '+won(v)+'원':'';}

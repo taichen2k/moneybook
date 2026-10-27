@@ -202,7 +202,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=41; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=42; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -558,8 +558,28 @@ function moreHelp(){return `
 
 /* ---------- sheets ---------- */
 function openSheet(k){if(!S.sheet&&!S.histSheet){try{history.pushState({mbSheet:1},'');S.histSheet=true;}catch(e){}}S.sheet=k;renderSheet();}
-function closeSheet(){S.sheet=null;$('#sheetRoot').innerHTML='';if(S.histSheet){S.histSheet=false;try{history.back();}catch(e){}}}
-window.addEventListener('popstate',()=>{if(S.histSheet){S.histSheet=false;if(S.sheet){S.sheet=null;$('#sheetRoot').innerHTML='';render();}}});
+function closeSheet(){S.sheet=null;$('#sheetRoot').innerHTML='';if(S.histSheet){S.histSheet=false;S.ignorePop=true;try{history.back();}catch(e){S.ignorePop=false;}}}
+/* ---------- 휴대폰 뒤로 가기 ----------
+   앱 맨 처음 화면 위에 '보초' 기록을 하나 깔아 두고, 뒤로 가기를 누르면 앱 안에서 한 단계씩 돌아가요.
+   (창 닫기 → 상세 화면 닫기 → 가계부 탭으로) 가계부 첫 화면에서는 한 번 더 눌러야 앱이 닫혀요. */
+let exitAt=0;
+function backStep(){if(lockOn())return false;
+  if(S.mp){S.mp=null;mpRender();return true;}
+  if(S.amenu||S.smOpen){S.amenu=false;S.smOpen=false;render();return true;}
+  if(S.tab==='asset'&&S.av){S.av=null;render();return true;}
+  if(S.tab==='asset'&&S.overview){S.overview=false;render();return true;}
+  if(S.tab==='stat'&&S.statCat){S.statCat='';S.statSub='';render();return true;}
+  if(S.tab==='more'&&S.moreView){S.moreView='';render();return true;}
+  if(S.tab!=='list'){S.tab='list';try{localStorage.setItem('moneybook.tab','list');}catch(e){}window.scrollTo(0,0);render();return true;}
+  if(S.sub!=='daily'){S.sub='daily';S.selDay='';try{localStorage.setItem('moneybook.sub','daily');}catch(e){}window.scrollTo(0,0);render();return true;}
+  if(S.label!==curLabel()){goLabel(curLabel());return true;}
+  return false;}
+window.addEventListener('popstate',()=>{if(S.ignorePop){S.ignorePop=false;return;}
+  if(S.histSheet){S.histSheet=false;if(S.sheet){S.sheet=null;$('#sheetRoot').innerHTML='';render();}return;}
+  if(backStep()){try{history.pushState({mbGuard:1},'');}catch(e){}return;}
+  if(Date.now()-exitAt<2000){S.ignorePop=true;try{history.back();}catch(e){}return;}// 2초 안에 한 번 더 → 닫기
+  exitAt=Date.now();toast('뒤로 버튼을 한 번 더 누르면 닫혀요.');try{history.pushState({mbGuard:1},'');}catch(e){}});
+try{if(!(history.state&&history.state.mbGuard))history.pushState({mbGuard:1},'');}catch(e){}
 function renderSheet(){if(!S.sheet){closeSheet();return;}const fn=SHEETS[S.sheet];if(!fn)return;
   const sc=$('.sheet')?$('.sheet').scrollTop:0;
   const full=['tx','search','favorites','filter','accEdit'].includes(S.sheet);const sc2=$('.txb')?$('.txb').scrollTop:0;const sc3=$('.sres')?$('.sres').scrollTop:0;

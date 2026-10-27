@@ -203,7 +203,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=49; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=50; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -318,7 +318,7 @@ function rowHtml(t){const kd=kindOf(t);const isT=t.type==='trf';const name=isT?'
 
 function dayGroups(list){const by={};for(const t of list)(by[t.date]=by[t.date]||[]).push(t);
   return Object.keys(by).sort().reverse().map(d=>{const asc=(S.settings.timeMode||'').endsWith('asc');const items=by[d].sort((a,b)=>{const r=(b.time||'').localeCompare(a.time||'')||(b.created||0)-(a.created||0);return asc?-r:r;});const tt=totals(items);const w=dowOf(d);
-    return `<div class="dg"><div class="day"><span class="dn num">${+d.slice(8)||''}</span><span class="dw ${w===0?'sun':w===6?'sat':''}">${DOW[w]}요일</span><span class="dym num">${esc(d.slice(0,7).replace('-','.'))}</span><span class="ds num"><span class="inc">${won(tt.inc)}원</span><span class="exp">${won(tt.exp)}원</span></span></div><div class="rows">${items.map(rowHtml).join('')}</div></div>`;}).join('');}
+    return `<div class="dg"><div class="day" data-act="addOn" data-d="${esc(d)}" title="이 날짜로 입력"><span class="dn num">${+d.slice(8)||''}</span><span class="dw ${w===0?'sun':w===6?'sat':''}">${DOW[w]}요일</span><span class="dym num">${esc(d.slice(0,7).replace('-','.'))}</span><span class="ds num"><span class="inc">${won(tt.inc)}원</span><span class="exp">${won(tt.exp)}원</span></span></div><div class="rows">${items.map(rowHtml).join('')}</div></div>`;}).join('');}
 
 function filterOn(){const F=S.filter;return !!(F.inc.length||F.exp.length||F.acc.length);}
 function passFilter(t){const F=S.filter;if(F.inc.length||F.exp.length){if(t.type==='trf')return false;if(!(F[t.type]||[]).includes(t.cat))return false;}
@@ -484,7 +484,7 @@ function avHtml(a){const v=S.av;const F=accFlow(a.id);const R=avRange();const is
   if(v.tab==='d'){const rows=inR.slice().reverse();if(!rows.length)return h+`<div class="empty"><b>이 기간 내역이 없어요</b></div>`+avFab(a);
     const by={};rows.forEach(o=>(by[o.t.date]=by[o.t.date]||[]).push(o));let first=true;
     h+=Object.keys(by).sort().reverse().map(d=>{const its=by[d];const di=its.reduce((x,o)=>x+(o.v>0?o.v:0),0),dx=its.reduce((x,o)=>x+(o.v<0?-o.v:0),0);const w=dowOf(d);
-      return `<div class="dg"><div class="day"><span class="dn num">${+d.slice(8)}</span><span class="dw ${w===0?'sun':w===6?'sat':''}">${DOW[w]}요일</span><span class="dym num">${esc(d.slice(0,7).replace('-','.'))}</span><span class="ds num"><span class="inc">${won(di)}원</span><span class="exp">${won(dx)}원</span></span></div><div class="rows">${its.map(o=>{const t=o.t;const isT=t.type==='trf';const name=isT?'이체':(t.cat||'미분류');
+      return `<div class="dg"><div class="day" data-act="addOn" data-d="${esc(d)}" title="이 날짜로 입력"><span class="dn num">${+d.slice(8)}</span><span class="dw ${w===0?'sun':w===6?'sat':''}">${DOW[w]}요일</span><span class="dym num">${esc(d.slice(0,7).replace('-','.'))}</span><span class="ds num"><span class="inc">${won(di)}원</span><span class="exp">${won(dx)}원</span></span></div><div class="rows">${its.map(o=>{const t=o.t;const isT=t.type==='trf';const name=isT?'이체':(t.cat||'미분류');
         const r=`<button class="row avr" data-act="edit" data-id="${esc(t.id)}" data-ym="${esc(t.date.slice(0,7))}"><span class="c">${esc(name)}</span><span class="t"><b>${esc(t.memo||t.note||(isT?accName(t.acc)+' → '+accName(t.to):''))}</b><small>${esc(isT?(o.v>0?accName(t.acc)+'에서':accName(t.to)+'으로'):accName(t.acc))}</small></span><span class="a num"><span class="${o.v<0?'exp':'inc'}">${won(Math.abs(o.v))}원</span><small>(${first?'누적잔액 ':''}${o.bal<0?'-':''}${won(Math.abs(o.bal))})</small></span></button>`;first=false;return r;}).join('')}</div></div>`;}).join('');
     return h+avFab(a);}
   // 월별: 그 해 12달, 연별: 해마다
@@ -694,7 +694,7 @@ const SHEETS={
   <div class="frow ${f.panel==='amt'?'act':''}"><span class="fl">금액</span><button class="fv amtv num" data-act="panel" data-k="amt">${f.amountStr?fmtExpr(f.amountStr)+(ops&&!isNaN(val)?` <small>= ${won(val)}원</small>`:'원'):'<span class="ph">&nbsp;</span>'}</button>${f.type==='trf'?`<button class="feeb num ${f.panel==='fee'||calc(f.feeStr||'')>0?'on':''}" data-act="panel" data-k="fee">${calc(f.feeStr||'')>0?'수수료 '+won(calc(f.feeStr)):'수수료'}</button>`:''}</div>
   ${f.type==='trf'?`<div class="swapw">${frow('출금','acc',f.acc?esc(accName(f.acc)):'')+frow('입금','to',f.to?esc(accName(f.to)):'')}<button class="swapb" data-act="swapAcc" aria-label="출금과 입금 바꾸기">↓↑</button></div>`:frow('분류','cat',catTxt)+frow('자산','acc',f.acc?esc(accName(f.acc)):'')}
   ${(S.settings.timeMode||'').startsWith('on')?`<div class="frow"><span class="fl">시간</span><input class="fv num" type="time" id="f-time" value="${esc((f.time||'').slice(0,5))}" aria-label="시간"></div>`:''}
-  <div class="frow sugw"><span class="fl">내용</span><input class="fv" id="f-memo" placeholder="" value="${esc(f.memo)}" autocomplete="off" data-act="memoFocus"><div id="f-sug" class="sug" hidden></div></div>
+  <div class="frow sugw"><span class="fl">내용</span><input class="fv" id="f-memo" placeholder="" value="${esc(f.memo)}" autocomplete="off" data-act="memoFocus"></div><div id="f-sug" class="sug" hidden></div>
   <div class="frow"><span class="fl">메모</span><input class="fv" id="f-note" placeholder="가게 이름 등" value="${esc(f.note||'')}" autocomplete="off" data-act="memoFocus"></div>
   <div class="tagrow">${(f.tags||[]).map(g=>`<button class="tagc on" data-act="tagTog" data-k="${esc(g)}">#${esc(g)} ×</button>`).join('')}<button class="tagc" data-act="tagPick">+ 태그</button></div>${f.tagPick?`<div class="tagpick">${(S.settings.tags||[]).filter(g=>!(f.tags||[]).includes(g)).map(g=>`<button class="tagc" data-act="tagTog" data-k="${esc(g)}">#${esc(g)}</button>`).join('')}<span class="tagnew"><input class="in-t" id="f-tagnew" placeholder="새 태그" maxlength="20"><button class="btn sm" data-act="tagNewF">추가</button></span></div>`:''}
   ${edit?'':`<label class="chk"><input type="checkbox" id="f-fav" ${f.fav?'checked':''}> 자주 쓰는 내역에 추가</label>`}
@@ -913,6 +913,7 @@ const ACT={
  tab(el){if(S.tab===el.dataset.k){S.av=null;S.moreView='';}S.tab=el.dataset.k;S.overview=false;S.amenu=false;S.smOpen=false;try{localStorage.setItem('moneybook.tab',S.tab);}catch(e){}if(S.tab==='asset'&&Date.now()-(S.fullAt||0)>300000){S.fullAt=Date.now();ensureMonths(allMonths(),true);};window.scrollTo(0,0);render();},
  prev(){S.label=shiftLabel(S.label,-1);S.selDay='';subscribePeriod();render();},
  next(){S.label=shiftLabel(S.label,1);S.selDay='';subscribePeriod();render();},
+ addOn(el){const d=el.dataset.d;if(!okDate(d)||!S.canWrite)return;openTx(null);S.form.date=d;if(S.tab==='asset'&&S.av){const a=S.settings.accounts.find(x=>x.id===S.av.id);if(a)S.form.acc=a.id;}renderSheet();},
  add(){openTx(null);if(S.tab==='asset'&&S.av&&S.form){const a=S.settings.accounts.find(x=>x.id===S.av.id);if(a)S.form.acc=a.id;renderSheet();}},
  edit(el){const t=txOf(el.dataset.ym).find(x=>x.id===el.dataset.id);if(!t)return;if(!S.canWrite){toast('보기 전용이에요');return;}openTx(t);},
  pickDay(el){S.selDay=S.selDay===el.dataset.d?'':el.dataset.d;render();},
@@ -925,6 +926,7 @@ const ACT={
  tagPick(){readForm();S.form.tagPick=!S.form.tagPick;S.form.panel='';renderSheet();},
  tagTog(el){readForm();const f=S.form;const g=el.dataset.k;const l=f.tags||[];f.tags=l.includes(g)?l.filter(x=>x!==g):l.concat(g);renderSheet();},
  tagNewF(){readForm();const v=((document.getElementById('f-tagnew')||{}).value||'').trim().replace(/^#/,'').slice(0,20);if(!v||BADK.has(v))return;const f=S.form;if(!(f.tags||[]).includes(v))f.tags=(f.tags||[]).concat(v);if(!(S.settings.tags||[]).includes(v))saveSettings({tags:(S.settings.tags||[]).concat(v)});renderSheet();},
+ sugOffAll(){saveSettings({autoFill:false});ACT.sugClose();toast('자동 완성을 껐어요. 설정관리 › 내역 자동 완성에서 다시 켤 수 있어요.');},
  sugClose(){const b=document.getElementById('f-sug');if(b){b.hidden=true;b.innerHTML='';}S.sugOff=true;},
  sugPick(el){const t=(S._sug||[])[+el.dataset.i];if(!t||!S.form)return;readForm();const f=S.form;f.memo=t.memo;if(t.type==='trf'){f.acc=t.acc;f.to=t.to;}else{f.cat=t.cat||'';f.sub=t.sub||'';if(t.acc&&S.settings.accounts.some(a=>a.id===t.acc))f.acc=t.acc;}if(!f.amountStr)f.amountStr=String(t.amount);if(!f.note&&t.note)f.note=t.note;f.panel='';renderSheet();},
  memoFocus(){if(S.form&&S.form.panel){readForm();S.form.panel='';renderSheet();const m=document.getElementById('f-memo');if(m){m.focus();m.setSelectionRange(m.value.length,m.value.length);}}},
@@ -1194,7 +1196,7 @@ const ACT={
     else if(d.cur===d.first){const salt=newId();const hash=await hashPin(d.cur,salt);saveSettings({pin:{salt,hash}});S.unlockedOnce=true;markActive();S.pinDraft=null;toast('비밀번호를 설정했어요');closeSheet();}
     else{S.pinDraft={step:1,first:'',cur:'',err:'두 번 입력한 번호가 달라요. 처음부터 다시 입력하세요.'};renderSheet();}}}
 };
-const FAST=new Set(['pinKey','kp','sugPick','sugClose']);
+const FAST=new Set(['pinKey','kp','sugPick','sugClose','sugOffAll']);
 // 숫자 키는 닿는 순간 입력돼요. 그 손가락을 뗄 때 생기는 클릭이 다른 버튼에 떨어지지 않게 잠깐 막아요
 // 날짜·시간 칸을 누르면 휴대폰 달력 창을 확실히 띄워요(일부 폰에서 투명한 날짜 칸이 안 열리는 문제 대비)
 document.addEventListener('click',e=>{const t=e.target;if(t&&t.matches&&t.matches('input[type=date],input[type=time],input[type=month]')&&typeof t.showPicker==='function'&&!matchMedia('(pointer:fine)').matches&&!t.classList.contains('typable')){try{t.showPicker();}catch(x){}}},true);
@@ -1208,7 +1210,7 @@ function sugList(q){q=(q||'').trim();if(q.length<2||!S.settings.autoFill||!S.for
   const ms=Object.keys(Object.assign({},S.cache,S.live)).sort().reverse();
   for(const ym of ms){for(const t of txOf(ym).slice().sort((a,b)=>b.date.localeCompare(a.date))){if(t.type!==f.type||!t.memo)continue;const m=t.memo.trim();if(seen.has(m)||!m.includes(q)||m===q)continue;seen.add(m);out.push(t);if(out.length>=4)return out;}}return out;}
 function updSug(){const box=document.getElementById('f-sug');const inp=document.getElementById('f-memo');if(!box||!inp)return;const l=sugList(inp.value);S._sug=l;
-  if(!l.length){box.hidden=true;box.innerHTML='';return;}box.hidden=false;box.innerHTML=`<div class="sugh"><span>예전 내역</span><button data-act="sugClose" aria-label="닫기">×</button></div>`+l.map((t,i)=>`<button data-act="sugPick" data-i="${i}"><span>${esc(t.memo)}</span><small>${esc(t.type==='trf'?accName(t.acc)+' → '+accName(t.to):(t.cat||'')+(t.sub?' › '+t.sub:'')+' · '+accName(t.acc))} · ${won(t.amount)}원</small></button>`).join('');}
+  if(!l.length){box.hidden=true;box.innerHTML='';return;}box.hidden=false;box.innerHTML=l.map((t,i)=>`<button class="sgc" data-act="sugPick" data-i="${i}" title="${esc((t.cat||'')+' · '+accName(t.acc))}">${esc(t.memo)} <small>${won(t.amount)}</small></button>`).join('')+`<button class="sgc off" data-act="sugOffAll">자동 완성 끄기</button><button class="sgc x" data-act="sugClose" aria-label="닫기">×</button>`;}
 document.addEventListener('input',e=>{const t=e.target;
   if(t.id==='f-memo'&&S.form&&!S.sugOff){clearTimeout(ACT._sgt);ACT._sgt=setTimeout(updSug,250);}
   if(t.id==='f-amt'&&S.form){S.form.amountStr=t.value;const v=calc(t.value);const c=document.getElementById('f-calc');if(c)c.textContent=/[+\-*/×÷−]/.test(t.value.replace(/^-/,''))&&!isNaN(v)?'= '+won(v)+'원':'';}

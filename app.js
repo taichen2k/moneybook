@@ -112,11 +112,11 @@ function renderLock(){const r=$('#lockRoot');const on=lockOn();document.document
   if(r.querySelector('.lock')){updLock();return;}
   const way=lockWay();const PAT='<svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M5 5h7l7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
   const KEY='<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="18" height="11" rx="2"/><circle cx="7.5" cy="12.5" r="1" fill="currentColor"/><circle cx="12" cy="12.5" r="1" fill="currentColor"/><circle cx="16.5" cy="12.5" r="1" fill="currentColor"/></svg>';
-  const head2=`<div class="lock" role="dialog" aria-label="잠금 해제"><img src="logo-mark.svg" alt="" width="72" height="72" style="border-radius:18px;box-shadow:0 4px 14px rgba(0,0,0,.18)"><h2>티끌모아</h2>`;
+  const head2=`<div class="lock" role="dialog" aria-label="잠금 해제"><img class="lklogo" src="logo-mark.svg" alt="" width="72" height="72"><h2>티끌모아</h2>`;
   if(way==='choose'){r.innerHTML=head2+`<div>잠금 해제 방법을 선택하세요.</div><div class="lkch"><button data-act="lockWay" data-k="fp">${FPI.replace(/width="26" height="26"/,'width="40" height="40"')}<span>지문</span></button><button data-act="lockWay" data-k="pat">${PAT}<span>패턴</span></button><button data-act="lockWay" data-k="pin">${KEY}<span>비밀번호</span></button></div><div class="perr" id="lockErr">${esc(S.pinErr)}</div><button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div>`;return;}
   const back=true?`<button class="lk-back" data-act="lockWay" data-k="choose">‹ 다른 방법으로 열기</button>`:'';
-  if(way==='pat'){r.innerHTML=head2+`<div>패턴을 그려 주세요.</div><div class="perr" id="lockErr">${esc(S.pinErr)}</div>${patPadHtml('lock')}${back}<button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div>`;return;}
-  r.innerHTML=head2+`<div>비밀번호 4자리를 입력하세요.</div><div id="lockDots">${dotsHtml(S.pinIn.length,!!S.pinErr)}</div><div class="perr" id="lockErr">${esc(S.pinErr)}</div>${padHtml()}${back}<button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div>`;}
+  if(way==='pat'){r.innerHTML=head2+`<div>패턴을 그려 주세요.</div><div class="perr" id="lockErr">${esc(S.pinErr)}</div>${patPadHtml('lock')}<div class="lkfoot">${back}<button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div></div>`;return;}
+  r.innerHTML=head2+`<div>비밀번호 4자리를 입력하세요.</div><div id="lockDots">${dotsHtml(S.pinIn.length,!!S.pinErr)}</div><div class="perr" id="lockErr">${esc(S.pinErr)}</div>${padHtml()}<div class="lkfoot">${back}<button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div></div>`;}
 // 틀린 횟수는 기기에 기억해서 새로고침해도 초기화되지 않아요. 5번부터 30초, 60초… 기다려야 해요.
 function pinFails(add){let o={n:0,at:0};try{o=JSON.parse(localStorage.getItem('moneybook.pinFail')||'{}');}catch(e){}o.n=add?(o.n||0)+1:0;o.at=Date.now();try{localStorage.setItem('moneybook.pinFail',JSON.stringify(o));}catch(e){}return o.n;}
 function lockWait(){let o={};try{o=JSON.parse(localStorage.getItem('moneybook.pinFail')||'{}');}catch(e){}if((o.n||0)<5)return 0;const ms=Math.min(600,30*Math.pow(2,o.n-5))*1000-(Date.now()-(o.at||0));return ms>0?Math.ceil(ms/1000):0;}
@@ -202,7 +202,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=42; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=43; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}

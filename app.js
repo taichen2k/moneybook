@@ -146,7 +146,7 @@ function normalizeSettings(st){const d=clone(DEFAULTS);st=Object.assign(d,st||{}
   st.accounts=(Array.isArray(st.accounts)?st.accounts:[]).filter(a=>a&&typeof a==='object'&&/^[\w-]{1,60}$/.test(String(a.id||''))).map(normAcc);
   st.deleted=(Array.isArray(st.deleted)?st.deleted:[]).filter(a=>a&&typeof a==='object'&&/^[\w-]{1,60}$/.test(String(a.id||''))).map(a=>Object.assign(normAcc(a),{perf:Number(a.perf)||0}));
   st.weekStart=st.weekStart===1?1:0;st.firstSub=st.firstSub==='cal'?'cal':'daily';
-  st.swipe=st.swipe==='off'?'off':'date';st.autoFill=st.autoFill!==false;st.timeMode=['off-desc','off-asc','on-desc','on-asc'].includes(st.timeMode)?st.timeMode:'off-desc';st.inputOrder=st.inputOrder==='cat'?'cat':'amt';st.memoShow=!!st.memoShow;st.colorSet=st.colorSet==='B'?'B':'A';st.carry=!!st.carry;
+  st.swipe=st.swipe==='off'?'off':'date';st.autoFill=st.autoFill!==false;st.timeMode=['off-desc','off-asc','on-desc','on-asc'].includes(st.timeMode)?st.timeMode:'off-desc';st.inputOrder=st.inputOrder==='cat'?'cat':'amt';st.memoShow=st.memoShow!==false;st.colorSet=st.colorSet==='B'?'B':'A';st.carry=!!st.carry;
   st.trfExp=(Array.isArray(st.trfExp)?st.trfExp:[]).map(String).filter(x=>/^[\w-]{1,60}$/.test(x));st.groupOrder=uniq((Array.isArray(st.groupOrder)?st.groupOrder:[]).filter(g=>GK.includes(g)).concat(GK));st.groupHidden=(Array.isArray(st.groupHidden)?st.groupHidden:[]).filter(g=>GK.includes(g)&&!CORE_G.includes(g));
   const gn=(st.groupNames&&typeof st.groupNames==='object')?st.groupNames:{};const gn2={};for(const k of Object.keys(gn))if(GK.includes(k)&&!BADK.has(k)&&str(gn[k],20).trim())gn2[k]=str(gn[k],20).trim();st.groupNames=gn2;st.cardMode=st.cardMode==='B'?'B':'A';st.nickname=str(st.nickname,20);if(st.pat&&!(typeof st.pat.salt==='string'&&typeof st.pat.hash==='string'))st.pat=null;st.msWeekend=['none','fri','mon'].includes(st.msWeekend)?st.msWeekend:'none';st.tags=uniq((Array.isArray(st.tags)?st.tags:[]).map(x=>str(x,20).trim().replace(/^#/,'')).filter(x=>x&&!BADK.has(x)));
   if(!st.accounts.length)st.accounts=clone(DEFAULTS.accounts||[]);
@@ -203,7 +203,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=58; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=59; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}

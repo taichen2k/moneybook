@@ -662,3 +662,10 @@ button.acc:active{background:var(--sunk)}
 .ovbig b,.scbig b,.big{font-size:clamp(22px,7.5vw,28px)}
 .ovbig b,.scbig b,.big,.sum b,.net b{white-space:nowrap;overflow:hidden;text-overflow:clip}
 @media (max-width:340px){.lnav .mlab{font-size:17px!important}.lnav button{width:20px}.hic button{width:28px}.hic svg{width:19px;height:19px}.hic .sync{display:none}.lhead{gap:2px}}
+/* v38 잠금 해제 방법 고르기 */
+.lkseg{display:flex;background:rgba(255,255,255,.22);border-radius:999px;padding:4px;gap:4px;margin:2px 0 4px}
+.lkseg button{padding:9px 18px;border-radius:999px;font-size:16px;font-weight:600;color:inherit;opacity:.75}
+.lkseg button.on{background:rgba(255,255,255,.9);color:var(--on-accent);opacity:1;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.lk-fp{width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.85);color:var(--on-accent);display:flex;align-items:center;justify-content:center;margin:26px 0 6px;box-shadow:0 6px 18px rgba(0,0,0,.15)}
+.lk-fp:active{transform:scale(.95)}
+.lk-hint{opacity:.75;font-size:14px}

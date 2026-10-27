@@ -76,17 +76,22 @@ function recentlyActive(){try{const a=+sessionStorage.getItem('moneybook.activeA
 // 내용이 같으면 다시 그리지 않아요 (누르는 도중 버튼이 바뀌어 터치가 씹히는 문제 방지)
 function setHtml(el,h){if(el._h!==h){el.innerHTML=h;el._h=h;}if(el.id==='top')el.hidden=!h;}
 const FPI='<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 11v3.5c0 2-.6 3.8-1.6 5.3M8.5 7.6A5 5 0 0 1 17 11v2.5M7 11a5 5 0 0 1 .2-1.4M15 14.2a14 14 0 0 1-1 5.1M9.6 11a2.4 2.4 0 0 1 4.8 0v1.6M4.6 15.5A11 11 0 0 0 5 11a7 7 0 0 1 12.4-4.4M19 11v1.4"/></svg>';
+// 잠금 해제 방법: 지문·패턴(이 기기에서 켰을 때) 또는 비밀번호. 마지막에 고른 쪽을 기억해요
+function lockWay(){if(!bioGet())return 'pin';try{return localStorage.getItem('moneybook.lockWay')==='pin'?'pin':'bio';}catch(e){return 'bio';}}
 function renderLock(){const r=$('#lockRoot');const on=lockOn();document.documentElement.classList.toggle('locked',on);
   // 풀릴 때 잠금 화면을 0.35초 동안 투명하게 남겨 둬서, 마지막 숫자를 누른 손가락이 뒤 화면 버튼을 잘못 누르지 않게 해요
   if(!on){const l=r.querySelector('.lock');if(l&&!l.classList.contains('bye')){l.classList.add('bye');setTimeout(()=>{if(!lockOn())r.innerHTML='';},350);}else if(!l)r.innerHTML='';return;}
   if(r.querySelector('.lock.bye'))r.innerHTML='';
   if(r.querySelector('.lock')){updLock();return;}
-  r.innerHTML=`<div class="lock" role="dialog" aria-label="비밀번호 입력"><img src="logo-mark.svg" alt="" width="72" height="72" style="border-radius:18px;box-shadow:0 4px 14px rgba(0,0,0,.18)"><h2>티끌모아</h2><div>비밀번호 4자리를 입력하세요</div><div id="lockDots">${dotsHtml(S.pinIn.length,!!S.pinErr)}</div><div class="perr" id="lockErr">${esc(S.pinErr)}</div>${padHtml()}${bioGet()?`<button class="lk-bio" data-act="bioUnlock">${FPI}<span>지문·패턴로 열기</span></button>`:''}<button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div>`;
-  if(bioGet()&&!document.hidden)setTimeout(()=>bioUnlock(true),250);}
+  const way=lockWay();const seg=bioGet()?`<div class="lkseg"><button data-act="lockWay" data-k="bio" class="${way==='bio'?'on':''}">지문·패턴</button><button data-act="lockWay" data-k="pin" class="${way==='pin'?'on':''}">비밀번호</button></div>`:'';
+  r.innerHTML=`<div class="lock" role="dialog" aria-label="잠금 해제"><img src="logo-mark.svg" alt="" width="72" height="72" style="border-radius:18px;box-shadow:0 4px 14px rgba(0,0,0,.18)"><h2>티끌모아</h2>${seg}`+
+   (way==='bio'?`<div>지문 또는 휴대폰 패턴으로 열어요</div><button class="lk-fp" data-act="bioUnlock" aria-label="지문·패턴으로 열기">${FPI.replace(/width="26" height="26"/,'width="64" height="64"')}</button><div class="perr" id="lockErr">${esc(S.pinErr)}</div><small class="lk-hint">창이 안 뜨면 지문 그림을 누르세요</small>`
+   :`<div>비밀번호 4자리를 입력하세요</div><div id="lockDots">${dotsHtml(S.pinIn.length,!!S.pinErr)}</div><div class="perr" id="lockErr">${esc(S.pinErr)}</div>${padHtml()}`)+`<button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div>`;
+  if(way==='bio'&&!document.hidden)setTimeout(()=>bioUnlock(true),250);}
 // 틀린 횟수는 기기에 기억해서 새로고침해도 초기화되지 않아요. 5번부터 30초, 60초… 기다려야 해요.
 function pinFails(add){let o={n:0,at:0};try{o=JSON.parse(localStorage.getItem('moneybook.pinFail')||'{}');}catch(e){}o.n=add?(o.n||0)+1:0;o.at=Date.now();try{localStorage.setItem('moneybook.pinFail',JSON.stringify(o));}catch(e){}return o.n;}
 function lockWait(){let o={};try{o=JSON.parse(localStorage.getItem('moneybook.pinFail')||'{}');}catch(e){}if((o.n||0)<5)return 0;const ms=Math.min(600,30*Math.pow(2,o.n-5))*1000-(Date.now()-(o.at||0));return ms>0?Math.ceil(ms/1000):0;}
-function updLock(){const d=document.getElementById('lockDots'),e=document.getElementById('lockErr');if(!d){renderLock();return;}d.innerHTML=dotsHtml(S.pinIn.length,!!S.pinErr);e.textContent=S.pinErr||'';}
+function updLock(){const d=document.getElementById('lockDots'),e=document.getElementById('lockErr');if(!d){if(e)e.textContent=S.pinErr||'';if(!document.querySelector('#lockRoot .lock'))renderLock();return;}d.innerHTML=dotsHtml(S.pinIn.length,!!S.pinErr);e.textContent=S.pinErr||'';}
 const dot2=s=>s.slice(2).replace(/-/g,'.');
 const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const uniq=a=>[...new Set(a)];
@@ -168,7 +173,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=37; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=38; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -718,7 +723,7 @@ const SHEETS={
   if(d){return head('비밀번호 잠금')+`<div class="pinbox"><img src="logo-mark.svg" alt="" width="56" height="56"><div class="pin-step"><span class="${d.step===1?'on':''}">1</span><i></i><span class="${d.step===2?'on':''}">2</span></div>
     <b class="pin-t">${d.step===1?'새 비밀번호 4자리':'한 번 더 입력해 주세요'}</b><span class="pin-s">${d.step===1?'가계부를 열 때 쓸 번호예요':'확인을 위해 같은 번호를 눌러 주세요'}</span>
     ${dotsHtml(d.cur.length,!!d.err)}<div class="err pin-e">${esc(d.err||'')}</div>${padHtml()}</div>`;}
-  return head('비밀번호 잠금')+`<p style="margin:0;font-size:14px;color:var(--muted)">가계부를 열 때 4자리 비밀번호를 물어봐요. 모든 휴대폰에 똑같이 적용돼요.</p>${st.pin?`<div class="card bioc"><div><b>지문·패턴로 열기</b><small class="muted">${bioGet()?'이 기기에서 켜져 있어요. 비밀번호 대신 지문이나 휴대폰 패턴으로 바로 열려요.':S.bioOk===false?'이 기기(브라우저)는 지문·패턴 확인을 지원하지 않아요.':'이 기기에서만 켜져요. 기기마다 한 번씩 켜 주세요.'}</small></div>${S.bioOk===false?'':`<button class="btn ${bioGet()?'':'pri'} sm" data-act="${bioGet()?'bioOff':'bioOn'}">${bioGet()?'끄기':'켜기'}</button>`}</div>`:''}
+  return head('비밀번호 잠금')+`<p style="margin:0;font-size:14px;color:var(--muted)">가계부를 열 때 4자리 비밀번호를 물어봐요. 모든 휴대폰에 똑같이 적용돼요.</p>${st.pin?`<div class="card bioc"><div><b>지문·패턴으로 열기</b><small class="muted">${bioGet()?'이 기기에서 켜져 있어요. 비밀번호 대신 지문이나 휴대폰 패턴으로 바로 열려요.':S.bioOk===false?'이 기기(브라우저)는 지문·패턴 확인을 지원하지 않아요.':'이 기기에서만 켜져요. 기기마다 한 번씩 켜 주세요.'}</small></div>${S.bioOk===false?'':`<button class="btn ${bioGet()?'':'pri'} sm" data-act="${bioGet()?'bioOff':'bioOn'}">${bioGet()?'끄기':'켜기'}</button>`}</div>`:''}
   ${st.pin?`<div class="f"><label for="lockMin">다시 잠그기</label><select class="in-t" id="lockMin">${[[0,'화면을 벗어나면 바로'],[1,'1분 뒤'],[5,'5분 뒤'],[30,'30분 뒤']].map(([v,n])=>`<option value="${v}" ${(st.lockMin??1)===v?'selected':''}>${n}</option>`).join('')}</select></div>
   <div class="acts"><button class="btn danger" data-act="pinOff">잠금 끄기</button><button class="btn" data-act="pinStart">비밀번호 바꾸기</button></div>`:
   `<div class="acts"><button class="btn pri" data-act="pinStart">비밀번호 설정</button></div>`}`;},
@@ -1118,9 +1123,10 @@ const ACT={
  xlsIn(){const i=document.getElementById('xl-in');if(i)i.click();},
  pinStart(){S.pinDraft={step:1,first:'',cur:'',err:''};renderSheet();},
  bioUnlock(){bioUnlock(false);},
+ lockWay(el){try{localStorage.setItem('moneybook.lockWay',el.dataset.k);}catch(e){}S.pinIn='';S.pinErr='';$('#lockRoot').innerHTML='';renderLock();},
  async bioOn(){if(!(await bioAvail())){S.bioOk=false;renderSheet();toast('이 기기에서는 지문·패턴 확인을 쓸 수 없어요');return;}
-  try{await bioRegister();toast('지문·패턴로 열기를 켰어요');}catch(e){toast(e&&e.name==='NotAllowedError'?'취소했어요':'켜지 못했어요 ('+((e&&e.name)||'오류')+')');}renderSheet();},
- bioOff(){bioSet(null);toast('지문·패턴로 열기를 껐어요');renderSheet();},
+  try{await bioRegister();toast('지문·패턴으로 열기를 켰어요');}catch(e){toast(e&&e.name==='NotAllowedError'?'취소했어요':'켜지 못했어요 ('+((e&&e.name)||'오류')+')');}renderSheet();},
+ bioOff(){bioSet(null);toast('지문·패턴으로 열기를 껐어요');renderSheet();},
  pinOff(){bioSet(null);saveSettings({pin:null});toast('잠금을 껐어요');renderSheet();},
  async pinKey(el){const k=el.dataset.k;
   if(lockOn()){const wait=lockWait();if(wait){S.pinIn='';S.pinErr=`여러 번 틀렸어요. ${wait}초 뒤에 다시 입력하세요`;updLock();return;}if(k==='back'){S.pinIn=S.pinIn.slice(0,-1);S.pinErr='';updLock();return;}if(S.pinIn.length>=4)return;S.pinIn+=k;S.pinErr='';updLock();
@@ -1168,7 +1174,7 @@ document.addEventListener('change',e=>{const t=e.target;
   if(t.id==='lockMin'){saveSettings({lockMin:+t.value});return;}
   if(t.id==='smode'){S.sp=t.value;S.statCat='';if(S.sp==='week')S.spWeek=today();if(S.sp==='year')S.spYear=+S.label.slice(0,4);if(S.sp==='range'){const p=period(S.label);S.rFrom=p.start;S.rTo=p.last;}render();return;}
   if(t.id==='sp-from'||t.id==='sp-to'){if(t.value){if(t.id==='sp-from')S.rFrom=t.value;else S.rTo=t.value;}render();return;}if(t.dataset.sms&&S.sms){S.sms.items[+t.dataset.i][t.dataset.sms]=t.value;}});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.mp){ACT.mpClose();return;}if(S.sheet==='tx'&&S.form&&(S.form.panel==='amt'||S.form.panel==='fee')&&!/INPUT|TEXTAREA/.test((e.target||{}).tagName||'')){const m={'Backspace':'back','Enter':'done','+':'+','-':'−','*':'×','/':'÷'};const k=/^[0-9]$/.test(e.key)?e.key:m[e.key];if(k){e.preventDefault();ACT.kp({dataset:{k}});return;}}if(S.locked&&S.settings.pin&&/^[0-9]$|^Backspace$/.test(e.key)){ACT.pinKey({dataset:{k:e.key==='Backspace'?'back':e.key}});return;}if(e.key==='Escape'&&S.sheet)closeSheet();if(e.key==='Enter'&&e.target.id==='c-new'){e.preventDefault();ACT.catAdd();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.mp){ACT.mpClose();return;}if(S.sheet==='tx'&&S.form&&(S.form.panel==='amt'||S.form.panel==='fee')&&!/INPUT|TEXTAREA/.test((e.target||{}).tagName||'')){const m={'Backspace':'back','Enter':'done','+':'+','-':'−','*':'×','/':'÷'};const k=/^[0-9]$/.test(e.key)?e.key:m[e.key];if(k){e.preventDefault();ACT.kp({dataset:{k}});return;}}if(S.locked&&S.settings.pin&&/^[0-9]$|^Backspace$/.test(e.key)){if(!document.getElementById('lockDots')){try{localStorage.setItem('moneybook.lockWay','pin');}catch(x){}$('#lockRoot').innerHTML='';renderLock();}ACT.pinKey({dataset:{k:e.key==='Backspace'?'back':e.key}});return;}if(e.key==='Escape'&&S.sheet)closeSheet();if(e.key==='Enter'&&e.target.id==='c-new'){e.preventDefault();ACT.catAdd();}});
 
 document.addEventListener('touchmove',e=>{if(lockOn())e.preventDefault();},{passive:false});
 // 스와이프: 좌우로 밀면 이전·다음 달(통계는 기간, 자산 상세는 그 화면 기간)로 이동
@@ -1183,7 +1189,7 @@ let updAt=0;async function checkUpdate(){if(Date.now()-updAt<60000||!navigator.o
     if(m&&+m[1]>APP_VERSION&&!S.sheet){try{if(sessionStorage.getItem('moneybook.updTo')===m[1])return;sessionStorage.setItem('moneybook.updTo',m[1]);}catch(e){}try{const r=await navigator.serviceWorker.getRegistration();if(r)await r.update();}catch(e){}if(!lockOn())markActive();location.reload();}}catch(e){}}
 setInterval(checkUpdate,30*60000);
 document.addEventListener('visibilitychange',()=>{if(document.hidden){S.hiddenAt=Date.now();if(S.settings.pin)document.documentElement.classList.add('veil');if(!lockOn())markActive();return;}
-  document.documentElement.classList.remove('veil');checkUpdate();if(lockOn()&&bioGet()&&document.getElementById('lockDots'))setTimeout(()=>bioUnlock(true),300);
+  document.documentElement.classList.remove('veil');checkUpdate();if(lockOn()&&bioGet()&&document.querySelector('#lockRoot .lk-fp'))setTimeout(()=>bioUnlock(true),300);
   if(S.settings.pin&&!S.locked&&S.hiddenAt&&Date.now()-S.hiddenAt>=(S.settings.lockMin??1)*60000){S.locked=true;S.pinIn='';S.pinErr='';closeSheet();render();}});
 function applyColors(){const r=document.documentElement;r.style.removeProperty('--exp');r.style.removeProperty('--inc');if(S.settings.colorSet!=='B')return;const cs=getComputedStyle(r);const e=cs.getPropertyValue('--exp'),i=cs.getPropertyValue('--inc');r.style.setProperty('--exp',i);r.style.setProperty('--inc',e);}
 try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>applyColors());}catch(e){}

@@ -203,7 +203,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=54; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=55; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -598,7 +598,7 @@ function defaultDate(){if(S.tab==='list'&&S.sub==='cal'&&S.selDay)return S.selDa
 const nowHM=()=>{const n=new Date();return pad(n.getHours())+':'+pad(n.getMinutes());};
 function openTx(t){if(t){S.form=Object.assign({},t,{tags:Array.isArray(t.tags)?t.tags.slice():[],tagPick:false,amountStr:String(t.amount),orig:t.id?{id:t.id,ym:t.date.slice(0,7)}:null,panel:''});}
   else S.form={type:'exp',amountStr:'',date:defaultDate(),cat:'',sub:'',acc:lastAcc(),to:'',memo:'',time:(S.settings.timeMode||'').startsWith('on')?nowHM():'',fav:false,panel:S.settings.inputOrder==='cat'?'cat':'amt',rep:'',inst:0,calcOn:false};
-  S.sugOff=false;S.form.confirmDel=false;S.form.err='';S.form.subPick=false;openSheet('tx');if(S.settings.autoFill)ensureMonths(allMonths().slice().sort().slice(-12));}
+  S.sugOff=false;S.form.snap=S.form.orig?txSig(S.form):'';S.form.copyAsk=false;S.form.confirmDel=false;S.form.err='';S.form.subPick=false;openSheet('tx');if(S.settings.autoFill)ensureMonths(allMonths().slice().sort().slice(-12));}
 
 function fmtExpr(s){return esc(String(s).replace(/,/g,'').replace(/\d+/g,m=>won(Number(m))).replace(/\*/g,'×').replace(/\//g,'÷').replace(/-/g,'−'));}
 function addMonths(s,i){const [y,m,d]=s.split('-').map(Number);const b=new Date(y,m-1+i,1);const ym=b.getFullYear()+'-'+pad(b.getMonth()+1);return ym+'-'+pad(Math.min(d,daysIn(ym)));}
@@ -699,7 +699,7 @@ const SHEETS={
   <div class="tagrow">${(f.tags||[]).map(g=>`<button class="tagc on" data-act="tagTog" data-k="${esc(g)}">#${esc(g)} ×</button>`).join('')}<button class="tagc" data-act="tagPick">+ 태그</button></div>${f.tagPick?`<div class="tagpick">${(S.settings.tags||[]).filter(g=>!(f.tags||[]).includes(g)).map(g=>`<button class="tagc" data-act="tagTog" data-k="${esc(g)}">#${esc(g)}</button>`).join('')}<span class="tagnew"><input class="in-t" id="f-tagnew" placeholder="새 태그" maxlength="20"><button class="btn sm" data-act="tagNewF">추가</button></span></div>`:''}
   ${edit?'':`<label class="chk"><input type="checkbox" id="f-fav" ${f.fav?'checked':''}> 자주 쓰는 내역에 추가</label>`}
   <div class="err" id="f-err">${esc(f.err)}</div>
-  ${f.panel?'':`${edit?`<div class="acts acts3"><button class="btn danger ${f.confirmDel?'go':''}" data-act="delTx">${f.confirmDel?'정말 삭제':'삭제'}</button><button class="btn" data-act="txCopy">복사</button><button class="btn" data-act="txFavAdd">자주사용</button></div>`:''}<div class="acts">${edit?'<button class="btn" data-act="close">닫기</button>':''}<button class="btn pri" data-act="saveTx">저장하기</button>${edit?'':'<button class="btn cont" data-act="saveTx" data-k="more">계속</button>'}</div>`}</div>`;
+  ${f.panel?'':`${edit?`<div class="acts" id="f-save" ${txDirty(f)?'':'hidden'}><button class="btn pri" data-act="saveTx">저장하기</button></div><div class="acts acts3"><button class="btn danger ${f.confirmDel?'go':''}" data-act="delTx"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>${f.confirmDel?'정말 삭제':'삭제'}</button><button class="btn" data-act="txCopy"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>복사</button><button class="btn" data-act="txFavAdd"><svg viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>자주사용</button></div>${f.copyAsk?`<div class="cpov" data-act="copyX"></div><div class="cpw"><div class="cpbox" role="dialog"><b>복사하기</b><button class="${f.copyMode==='today'?'on':''}" data-act="copyMode" data-k="today">오늘 날짜로 복사${f.copyMode==='today'?'<i>✓</i>':''}</button><button class="${f.copyMode!=='today'?'on':''}" data-act="copyMode" data-k="orig">작성한 날짜로 복사${f.copyMode!=='today'?'<i>✓</i>':''}</button></div><button class="cpok" data-act="copyGo">확인</button></div>`:''}`:`<div class="acts"><button class="btn pri" data-act="saveTx">저장하기</button><button class="btn cont" data-act="saveTx" data-k="more">계속</button></div>`}`}</div>`;
   if(f.panel)h+=`<div class="kp">${panelHtml(f)}</div>`;
   return h;},
 
@@ -902,6 +902,9 @@ async function doExport(scope,share){if(S.exporting)return;S.exporting=true;toas
   }catch(e){toast(String(e&&e.message||'').startsWith('load')?'일부 달을 불러오지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요.':'엑셀 파일을 만들지 못했어요');}finally{S.exporting=false;}}
 
 /* ---------- actions ---------- */
+function txSig(f){return JSON.stringify([f.type,f.date,calc(f.amountStr||''),f.cat||'',f.sub||'',f.acc||'',f.type==='trf'?f.to||'':'',(f.memo||'').trim(),(f.note||'').trim(),(f.time||'').slice(0,5),(f.tags||[]).join(',')]);}
+function txDirty(f){return !!(f&&f.orig&&f.snap&&txSig(f)!==f.snap);}
+function updDirty(){const f=S.form;if(!f||!f.orig)return;readForm();const b=document.getElementById('f-save');if(b)b.hidden=!txDirty(f);}
 function readForm(){const f=S.form;if(!f)return;const g=id=>document.getElementById(id);
   if(g('f-amt'))f.amountStr=g('f-amt').value;if(g('f-date')&&okDate(g('f-date').value))f.date=g('f-date').value;if(g('f-acc'))f.acc=g('f-acc').value;
   if(g('f-to'))f.to=g('f-to').value;if(g('f-time'))f.time=g('f-time').value;if(g('f-memo'))f.memo=g('f-memo').value;if(g('f-note'))f.note=g('f-note').value;if(g('f-fav'))f.fav=g('f-fav').checked;}
@@ -944,7 +947,10 @@ const ACT={
  repSet(el){const f=S.form;const k=el.dataset.k;f.rep=FREQ[k]?k:'';f.inst=0;f.panel='';renderSheet();},
  repMode(el){const f=S.form;f.repMode=el.dataset.k;f.instStr=f.inst>1?String(f.inst):'';renderSheet();},
  instKey(el){const f=S.form;const k=el.dataset.k;let v=f.instStr||'';if(k==='back')v=v.slice(0,-1);else if(k==='C')v='';else if(k==='ok'){const n=parseInt(v,10)||0;if(n>1&&n<=60){f.inst=n;f.rep='';}else if(!n){f.inst=0;}else{toast('2~60개월로 적어주세요');return;}f.repMode='';f.panel='';renderSheet();return;}else if(v.length<2)v+=k;f.instStr=v;renderSheet();},
- txCopy(){readForm();const f=S.form;if(!f||!f.orig)return;S.form=Object.assign({},f,{orig:null,id:undefined,created:undefined,auto:undefined,date:today(),confirmDel:false,err:'',panel:'',fav:false,inst:1,rep:''});renderSheet();toast('복사했어요. 날짜를 확인하고 저장하세요.');},
+ txCopy(){readForm();const f=S.form;if(!f||!f.orig)return;f.copyAsk=true;f.copyMode=f.copyMode||'orig';renderSheet();},
+ copyMode(el){if(S.form){S.form.copyMode=el.dataset.k;renderSheet();}},
+ copyX(){if(S.form){S.form.copyAsk=false;renderSheet();}},
+ copyGo(){const f=S.form;if(!f||!f.orig)return;const d=f.copyMode==='today'?today():f.date;S.form=Object.assign({},f,{orig:null,snap:'',copyAsk:false,id:undefined,created:undefined,auto:undefined,date:d,confirmDel:false,err:'',panel:'',fav:false,inst:0,rep:''});renderSheet();toast('복사했어요. 저장하기를 눌러야 기록돼요.');},
  txFavAdd(){readForm();const f=S.form;const amount=calc(f.amountStr);if(!(amount>0)){toast('금액을 먼저 넣어주세요.');return;}const fav={type:f.type,amount,cat:f.type==='trf'?'':f.cat,sub:f.type==='trf'?'':(f.sub||''),acc:f.acc,to:f.type==='trf'?f.to:'',memo:(f.memo||'').trim()};const l=S.settings.favorites||[];if(l.some(x=>x.type===fav.type&&x.amount===fav.amount&&x.cat===fav.cat&&x.acc===fav.acc&&x.memo===fav.memo)){toast('이미 자주 쓰는 내역에 있어요.');return;}saveSettings({favorites:l.concat(fav).slice(-30)});toast('자주 쓰는 내역에 추가했어요.');},
  txFav(){readForm();if(!(S.settings.favorites||[]).length){toast('자주 쓰는 내역이 아직 없어요');return;}openSheet('favorites');},
  fsub(el){readForm();S.form.sub=S.form.sub===el.dataset.k?'':el.dataset.k;renderSheet();},
@@ -1213,7 +1219,7 @@ function sugList(q){q=(q||'').trim();if(q.length<2||!S.settings.autoFill||!S.for
   for(const ym of ms){for(const t of txOf(ym).slice().sort((a,b)=>b.date.localeCompare(a.date))){if(t.type!==f.type||!t.memo)continue;const m=t.memo.trim();if(seen.has(m)||!m.includes(q)||m===q)continue;seen.add(m);out.push(t);if(out.length>=4)return out;}}return out;}
 function updSug(){const box=document.getElementById('f-sug');const inp=document.getElementById('f-memo');if(!box||!inp)return;const l=sugList(inp.value);S._sug=l;
   if(!l.length){box.hidden=true;box.innerHTML='';return;}box.hidden=false;box.innerHTML=`<button class="sgc x" data-act="sugClose" aria-label="추천 닫기">×</button><button class="sgc off" data-act="sugOffAll">끄기</button>`+l.map((t,i)=>`<button class="sgc" data-act="sugPick" data-i="${i}" title="${esc((t.cat||'')+' · '+accName(t.acc))}">${esc(t.memo)} <small>${won(t.amount)}</small></button>`).join('');}
-document.addEventListener('input',e=>{const t=e.target;
+document.addEventListener('input',e=>{const t=e.target;if(S.sheet==='tx'&&S.form&&S.form.orig&&/^f-/.test(t.id||''))updDirty();
   if(t.id==='f-memo'&&S.form&&!S.sugOff){clearTimeout(ACT._sgt);ACT._sgt=setTimeout(updSug,250);}
   if(t.id==='f-amt'&&S.form){S.form.amountStr=t.value;const v=calc(t.value);const c=document.getElementById('f-calc');if(c)c.textContent=/[+\-*/×÷−]/.test(t.value.replace(/^-/,''))&&!isNaN(v)?'= '+won(v)+'원':'';}
   if(t.id==='q'){S.search=t.value;clearTimeout(ACT._qt);ACT._qt=setTimeout(updateSearch,200);}

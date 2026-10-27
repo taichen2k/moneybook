@@ -165,7 +165,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=33; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=34; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -407,9 +407,15 @@ function avHtml(a){const v=S.av;const F=accFlow(a.id);const R=avRange();const is
   let h=`<div class="avh"><div><small class="muted">사용기간</small><b class="num">${f2(R.start)} ~ ${f2(R.last)}</b></div><span class="avi"><button class="x" data-act="avChart" aria-label="${v.chart?'목록 보기':'그래프 보기'}">${v.chart?HICON.list:HICON.chart}</button><button class="x" data-act="accOpen" data-k="${esc(a.id)}" aria-label="자산 정보 수정">${HICON.pen}</button></span></div>
    <div class="net four num"><div><span>입금</span><b class="inc">${won(inn)}</b></div><div><span>출금</span><b class="exp">${won(out)}</b></div><div><span>합계</span><b>${inn-out<0?'-':''}${won(Math.abs(inn-out))}</b></div>${v.tab==='y'?'':`<div><span>누적잔액</span><b class="${endBal<0?'exp':'inc'}">${won(Math.abs(endBal))}</b></div>`}</div>`;
   if(v.chart){// 실적 + 최근 6개 기간 잔액선·출금막대
-    if(isCard&&a.perf&&v.tab==='d'){const mon=l=>{const s0=l+'-01',e0=l+'-'+pad(daysIn(l));return {s0,e0,u:F.list.filter(o=>o.v<0&&o.t.type==='exp'&&o.t.date>=s0&&o.t.date<=e0).reduce((x,o)=>x-o.v,0)};};const L=v.label;
-      let cy={cur:{start:L+'-01',end:L+'-'+pad(daysIn(L))}};let used=mon(L).u;if(a.perfBase==='prev'){const pl=shiftLabel(L,-1);cy={cur:{start:pl+'-01',end:pl+'-'+pad(daysIn(pl))}};used=mon(pl).u;}else if(a.perfBase==='avg3'){const ls=[shiftLabel(L,-3),shiftLabel(L,-2),shiftLabel(L,-1)];cy={cur:{start:ls[0]+'-01',end:ls[2]+'-'+pad(daysIn(ls[2]))}};used=Math.round(ls.reduce((x,l)=>x+mon(l).u,0)/3);}
-      h+=`<div class="perf"><div><small class="muted">${a.perfBase==='prev'?'전월':a.perfBase==='avg3'?'3개월 평균':'당월'} 실적 (${f2(cy.cur.start)} ~ ${f2(cy.cur.end)})</small><b class="num">${won(a.perf)}원 ${used>=a.perf?'<span class="okc">✓</span>':''}</b></div><div><small class="muted">실적사용금액</small><b class="num">${won(used)}원</b></div><div><small class="muted">남은금액</small><b class="num muted">${a.perf-used<0?'-':''}${won(Math.abs(a.perf-used))}원</b></div></div>`;}
+    if(isCard&&a.perf&&v.tab==='d'){
+      // 할부는 첫 달에 할부 총 금액을 실적으로 (편한가계부와 같게). 내용 끝의 (할부 1/3)·(1/3) 표시로 알아봐요
+      const IR=/\s*\((?:할부\s*)?(\d{1,2})\/(\d{1,2})\)\s*$/;const grp=Object.create(null);
+      for(const o of F.list){if(o.t.type!=='exp')continue;const m=(o.t.memo||'').match(IR);if(!m)continue;const k=(o.t.memo||'').replace(IR,'')+'|'+m[2];const g=grp[k]=grp[k]||{tot:0,first:null};g.tot+=o.t.amount;if(m[1]==='1')g.first=o.t.id;}
+      const pv=t=>{const m=(t.memo||'').match(IR);if(!m)return t.amount;const g=grp[(t.memo||'').replace(IR,'')+'|'+m[2]];if(!g||!g.first)return t.amount;return g.first===t.id?g.tot:0;};
+      const mon=l=>{const s0=l+'-01',e0=l+'-'+pad(daysIn(l));return {s0,e0,u:F.list.filter(o=>o.v<0&&o.t.type==='exp'&&o.t.date>=s0&&o.t.date<=e0).reduce((x,o)=>x+pv(o.t),0)};};const L=v.label;
+      let cy={cur:{start:L+'-01',end:L+'-'+pad(daysIn(L))}};let used=mon(L).u;// 편한가계부처럼 이번 달(1일~말일) 사용액을 실적으로 보여줘요. 3개월 평균은 이번 달 포함 3달
+      if(a.perfBase==='avg3'){const ls=[shiftLabel(L,-2),shiftLabel(L,-1),L];cy={cur:{start:ls[0]+'-01',end:ls[2]+'-'+pad(daysIn(ls[2]))}};used=Math.round(ls.reduce((x,l)=>x+mon(l).u,0)/3);}
+      h+=`<div class="perf"><div><small class="muted">${a.perfBase==='avg3'?'3개월 평균 ':''}실적 (${f2(cy.cur.start)} ~ ${f2(cy.cur.end)})</small><b class="num">${won(a.perf)}원 ${used>=a.perf?'<span class="okc">✓</span>':''}</b></div><div><small class="muted">실적사용금액</small><b class="num">${won(used)}원</b></div><div><small class="muted">남은금액</small><b class="num muted">${a.perf-used<0?'-':''}${won(Math.abs(a.perf-used))}원</b></div></div>`;}
     const per=[];if(v.tab==='d'){let l=v.label;for(let i=0;i<6;i++){per.unshift({lab:(+l.slice(5))+'월',r:period(l)});l=shiftLabel(l,-1);}}else{for(let i=5;i>=0;i--){const y=v.year-i;per.push({lab:String(y).slice(2)+'년',r:{start:y+'-01-01',end:(y+1)+'-01-01',last:y+'-12-31'}});}}
     const pts=per.map(p=>({lab:p.lab,bal:balAt(p.r.last),out:F.list.filter(o=>o.v<0&&o.t.date>=p.r.start&&o.t.date<p.r.end).reduce((x,o)=>x-o.v,0),inn:F.list.filter(o=>o.v>0&&o.t.date>=p.r.start&&o.t.date<p.r.end).reduce((x,o)=>x+o.v,0)}));
     h+=lineBars(pts);return h;}

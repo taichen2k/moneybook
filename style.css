@@ -726,7 +726,7 @@ button.acc:active{background:var(--sunk)}
 .card.pie svg .pp{font-size:13px}
 .charts svg{max-width:560px;margin-left:auto;margin-right:auto}
 @media (min-width:700px){
-  .top{box-shadow:0 0 0 100vmax var(--surface);clip-path:inset(0 -100vmax)}
+  .top::before{content:'';position:absolute;top:0;bottom:-1px;left:50%;width:100vw;transform:translateX(-50%);background:var(--surface);border-bottom:1px solid var(--line);z-index:-1;pointer-events:none}
 }
 /* v54 수정 화면 하단 버튼 */
 .acts3{margin-bottom:8px}.acts3 .btn{flex:1}
@@ -742,3 +742,4 @@ button.acc:active{background:var(--sunk)}
 .cpbox button{display:flex;justify-content:space-between;width:100%;padding:16px 22px;font-size:16px;background:none;border:0;text-align:left;color:var(--text)}
 .cpbox button+button{border-top:1px solid var(--line)}.cpbox button.on{color:var(--exp,#e35d4a)}.cpbox i{font-style:normal}
 .cpok{padding:15px;font-size:16px;font-weight:700;border:0;color:var(--text)}
+html,body{overflow-x:clip}

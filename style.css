@@ -429,6 +429,8 @@ textarea.in-t{min-height:130px;resize:vertical;font-size:14px}
 
 .card p.muted{white-space:pre-line}
 
+html.veil header,html.veil main,html.veil #fab,html.veil nav,html.veil #sheetRoot{visibility:hidden}
+.lk-forgot{margin-top:14px;background:none;border:0;color:var(--muted);font:inherit;font-size:14px;text-decoration:underline;padding:10px}
 html.locked,html.locked body{overflow:hidden;overscroll-behavior:none;height:100%}
 .lock{touch-action:none;overscroll-behavior:none;user-select:none;-webkit-user-select:none}
 

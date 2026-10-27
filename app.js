@@ -19,7 +19,8 @@ const S={db:null,noDb:false,canWrite:true,settings:clone(DEFAULTS),settingsReady
   filter:{inc:[],exp:[],acc:[]},fTab:'exp',favEdit:false,
   sub:'daily',openMonth:'',memo:null,overview:false,locked:false,unlockedOnce:false,pinIn:'',pinErr:'',pinDraft:null,hiddenAt:0,
   sp:'month',spWeek:'',spYear:0,rFrom:'',rTo:'',statCat:''};
-try{const t=localStorage.getItem('moneybook.tab');if(t)S.tab=t;const u=localStorage.getItem('moneybook.sub');if(u)S.sub=u;}catch(e){}
+// 앱을 새로 열면 늘 가계부(일일) 화면으로 시작. 방금 쓰다가 새로고침된 경우만 보던 화면 유지
+if(recentlyActive())try{const t=localStorage.getItem('moneybook.tab');if(t)S.tab=t;const u=localStorage.getItem('moneybook.sub');if(u)S.sub=u;}catch(e){}
 if(S.tab==='cal'){S.tab='list';S.sub='cal';}if(!['list','stat','asset','more'].includes(S.tab))S.tab='list';
 
 /* ---------- helpers ---------- */
@@ -118,7 +119,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=22; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=23; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}

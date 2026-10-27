@@ -91,7 +91,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=19; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=20; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -158,13 +158,13 @@ function renderTop(){const top=$('#top');const sc=!S.db?'off':GH.err?'off':S.db.
   let h='';
   if(S.tab==='list'){const yearMode=S.sub==='month';const [y,m]=S.label.split('-');
     const t=yearMode?totals(yearTx(+y).filter(passFilter)):totals(txIn(period(S.label)).filter(passFilter));
-    h+=`<div class="lhead"><div class="lnav"><button data-act="${yearMode?'yprev':'prev'}" aria-label="이전">‹</button><b>${yearMode?y+'년':y+'년 '+(+m)+'월'}</b><button data-act="${yearMode?'ynext':'next'}" aria-label="다음">›</button></div>
+    h+=`<div class="lhead"><div class="lnav"><button data-act="${yearMode?'yprev':'prev'}" aria-label="이전">‹</button><button class="mlab" data-act="mpOpen" data-k="${yearMode?'year':'month'}" aria-label="날짜 고르기">${yearMode?y+'년':y+'년 '+(+m)+'월'}<i>▾</i></button><button data-act="${yearMode?'ynext':'next'}" aria-label="다음">›</button></div>
       <div class="hic"><span class="sync ${sc}" title="${st}"><i></i></span><button data-act="open" data-k="sms" aria-label="문자 붙여넣기">${HICON.sms}</button><button data-act="open" data-k="favorites" aria-label="자주 쓰는 내역">${HICON.fav}</button><button data-act="open" data-k="search" aria-label="검색">${HICON.search}</button><button data-act="open" data-k="filter" aria-label="필터" class="${filterOn()?'fact':''}">${HICON.set}</button></div></div>
     <div class="subtabs">${SUBS.map(([k,n])=>`<button data-act="sub" data-k="${k}" class="${S.sub===k?'on':''}">${n}</button>`).join('')}</div>${sumRow(t)}`;
     top.innerHTML=h;return;}
   h=`<div class="brand"><h1><img src="logo-mark.svg" alt="" width="28" height="28">티끌모아</h1><span class="sync ${sc}"><i></i>${st}</span></div>`;
   if(S.tab==='stat'){const sp=statPeriod();const t=totals(txIn(sp));const modes=[['week','주간'],['month','월간'],['year','연간'],['range','기간']];
-    let lab;if(S.sp==='month'){const [y,m]=S.label.split('-');lab=`<b>${y}년 ${+m}월</b>`;}else if(S.sp==='year')lab=`<b>${S.spYear||S.label.slice(0,4)}년</b>`;
+    let lab;if(S.sp==='month'){const [y,m]=S.label.split('-');lab=`<button class="mlab big" data-act="mpOpen" data-k="month">${y}년 ${+m}월<i>▾</i></button>`;}else if(S.sp==='year')lab=`<button class="mlab big" data-act="mpOpen" data-k="syear">${S.spYear||S.label.slice(0,4)}년<i>▾</i></button>`;
     else if(S.sp==='week')lab=`<b class="num" style="font-size:19px">${dot2(sp.start)} ~ ${dot2(sp.last)}</b>`;
     else lab=`<span class="rng"><input type="date" id="sp-from" class="in-t" value="${sp.start}" aria-label="시작일"> ~ <input type="date" id="sp-to" class="in-t" value="${sp.last}" aria-label="종료일"></span>`;
     h+=`<div class="month spn">${S.sp==='range'?'':'<button data-act="sprev" aria-label="이전">‹</button>'}<div class="m">${lab}</div>${S.sp==='range'?'':'<button data-act="snext" aria-label="다음">›</button>'}
@@ -357,6 +357,14 @@ function searchResults(){const q=S.search.trim();const ms=allMonths();const load
   if(!all.length)return '<div class="empty">찾는 내역이 없어요</div>';const sum=totals(all);const res=all.slice(0,300);
   return `<div class="sinfo num">${all.length}건 · 수입 <span class="inc">${won(sum.inc)}원</span> · 지출 <span class="exp">${won(sum.exp)}원</span>${all.length>res.length?` · 최근 ${res.length}건만 표시`:''}</div>`+dayGroups(res);}
 function updateSearch(){const r=document.getElementById('sres');if(r&&S.sheet==='search')r.innerHTML=searchResults();}
+/* ---------- 날짜(달) 고르기 창 ---------- */
+function mpRender(){let r=document.getElementById('mpRoot');if(!r){r=document.createElement('div');r.id='mpRoot';document.body.appendChild(r);}
+  const m=S.mp;if(!m){r.innerHTML='';return;}const [cy,cm]=(m.mode==='syear'?[String(S.spYear||S.label.slice(0,4)),'00']:S.label.split('-'));const now=curLabel();
+  const months=m.mode==='month'?`<div class="mp-g">${Array.from({length:12},(_,i)=>{const l=m.y+'-'+pad(i+1);return `<button data-act="mpPick" data-k="${l}" class="${l===S.label?'on':''} ${l===now?'now':''}">${i+1}월</button>`;}).join('')}</div>`
+    :`<div class="mp-g">${Array.from({length:12},(_,i)=>{const yy=m.y0+i;return `<button data-act="mpPickY" data-k="${yy}" class="${String(yy)===cy?'on':''} ${String(yy)===now.slice(0,4)?'now':''}">${yy}</button>`;}).join('')}</div>`;
+  r.innerHTML=`<div class="mp-ov" data-act="mpClose"></div><div class="mp" role="dialog" aria-label="날짜 고르기"><div class="mp-h"><span>날짜</span><button data-act="mpNow">${m.mode==='month'?'이번 달':'올해'}</button><button data-act="mpClose" aria-label="닫기">×</button></div>
+    <div class="mp-y"><button data-act="mpY" data-k="-1" aria-label="이전">‹</button><b>${m.mode==='month'?m.y:(m.y0+' – '+(m.y0+11))}</b><button data-act="mpY" data-k="1" aria-label="다음">›</button></div>${months}</div>`;}
+function goLabel(l){if(l===S.label)return;S.label=l;S.selDay='';S.statCat='';subscribePeriod();render();}
 const SHEETS={
  tx(){const f=S.form;const edit=!!f.orig;const val=calc(f.amountStr);const ops=/[+\-*/×÷−]/.test(f.amountStr.replace(/^-/,''));
   const [yy,mm,dd]=f.date.split('-');const dl=`${yy.slice(2)}. ${mm}. ${dd}. (${DOW[dowOf(f.date)]})`;
@@ -596,6 +604,12 @@ const ACT={
  fTab(el){S.fTab=el.dataset.k;renderSheet();},
  fReset(){S.filter={inc:[],exp:[],acc:[]};render();if(S.sheet==='filter')renderSheet();},
  favEditT(){S.favEdit=!S.favEdit;renderSheet();},
+ mpOpen(el){const k=el.dataset.k;if(k==='month')S.mp={mode:'month',y:+S.label.slice(0,4)};else{const y=k==='syear'?(S.spYear||+S.label.slice(0,4)):+S.label.slice(0,4);S.mp={mode:k,y0:y-6};}mpRender();},
+ mpClose(){S.mp=null;mpRender();},
+ mpY(el){const d=+el.dataset.k;if(S.mp.mode==='month')S.mp.y+=d;else S.mp.y0+=12*d;mpRender();},
+ mpPick(el){S.mp=null;mpRender();goLabel(el.dataset.k);},
+ mpPickY(el){const y=+el.dataset.k;const mode=S.mp.mode;S.mp=null;mpRender();if(mode==='syear'){S.spYear=y;S.statCat='';render();}else goLabel(y+'-'+S.label.slice(5,7));},
+ mpNow(){const mode=S.mp.mode;S.mp=null;mpRender();if(mode==='syear'){S.spYear=+today().slice(0,4);render();}else if(mode==='year')goLabel(today().slice(0,4)+'-'+S.label.slice(5,7));else goLabel(curLabel());},
  ovw(el){S.overview=el.dataset.k==='1';window.scrollTo(0,0);render();},
  sprev(){ACT._sshift(-1);}, snext(){ACT._sshift(1);},
  _sshift(k){S.statCat='';if(S.sp==='month'){S.label=shiftLabel(S.label,k);subscribePeriod();}
@@ -710,7 +724,7 @@ document.addEventListener('change',e=>{const t=e.target;
   if(t.id==='lockMin'){saveSettings({lockMin:+t.value});return;}
   if(t.id==='smode'){S.sp=t.value;S.statCat='';if(S.sp==='week')S.spWeek=today();if(S.sp==='year')S.spYear=+S.label.slice(0,4);if(S.sp==='range'){const p=period(S.label);S.rFrom=p.start;S.rTo=p.last;}render();return;}
   if(t.id==='sp-from'||t.id==='sp-to'){if(t.value){if(t.id==='sp-from')S.rFrom=t.value;else S.rTo=t.value;}render();return;}if(t.dataset.sms&&S.sms){S.sms.items[+t.dataset.i][t.dataset.sms]=t.value;}});
-document.addEventListener('keydown',e=>{if(S.sheet==='tx'&&S.form&&(S.form.panel==='amt'||S.form.panel==='fee')&&!/INPUT|TEXTAREA/.test((e.target||{}).tagName||'')){const m={'Backspace':'back','Enter':'done','+':'+','-':'−','*':'×','/':'÷'};const k=/^[0-9]$/.test(e.key)?e.key:m[e.key];if(k){e.preventDefault();ACT.kp({dataset:{k}});return;}}if(S.locked&&S.settings.pin&&/^[0-9]$|^Backspace$/.test(e.key)){ACT.pinKey({dataset:{k:e.key==='Backspace'?'back':e.key}});return;}if(e.key==='Escape'&&S.sheet)closeSheet();if(e.key==='Enter'&&e.target.id==='c-new'){e.preventDefault();ACT.catAdd();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.mp){ACT.mpClose();return;}if(S.sheet==='tx'&&S.form&&(S.form.panel==='amt'||S.form.panel==='fee')&&!/INPUT|TEXTAREA/.test((e.target||{}).tagName||'')){const m={'Backspace':'back','Enter':'done','+':'+','-':'−','*':'×','/':'÷'};const k=/^[0-9]$/.test(e.key)?e.key:m[e.key];if(k){e.preventDefault();ACT.kp({dataset:{k}});return;}}if(S.locked&&S.settings.pin&&/^[0-9]$|^Backspace$/.test(e.key)){ACT.pinKey({dataset:{k:e.key==='Backspace'?'back':e.key}});return;}if(e.key==='Escape'&&S.sheet)closeSheet();if(e.key==='Enter'&&e.target.id==='c-new'){e.preventDefault();ACT.catAdd();}});
 
 document.addEventListener('touchmove',e=>{if(lockOn())e.preventDefault();},{passive:false});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){S.hiddenAt=Date.now();if(!lockOn())markActive();return;}

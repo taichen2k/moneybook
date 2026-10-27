@@ -1,5 +1,5 @@
 /* 티끌모아 서비스워커: 화면 파일은 인터넷 우선, 끊기면 저장해 둔 것 사용. 깃허브 API(데이터)는 건드리지 않음. 같은 주소의 다른 앱(할수있어·정수리 Cam) 캐시는 지우지 않음 */
-const CACHE='moneybook-v19';
+const CACHE='moneybook-v20';
 const SHELL=['./','./index.html','./style.css','./app.js','./manifest.webmanifest','./fonts/PretendardVariable.woff2','./icon-192.png','./favicon.svg','./logo-mark.svg','./logo.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('moneybook-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});

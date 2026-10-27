@@ -65,7 +65,7 @@ async function bioVerify(){const b=bioGet();if(!b)throw new Error('none');
 async function bioUnlock(auto){if(S.bioBusy||!lockOn()||!bioGet())return;S.bioBusy=true;
   try{await bioVerify();pinFails(0);S.locked=false;S.unlockedOnce=true;S.pinIn='';S.pinErr='';markActive();render();}
   catch(e){const n=e&&e.name;// 사용자가 취소하거나 시간이 지나면(NotAllowedError) 조용히 비밀번호 화면으로
-    if(!auto&&n!=='NotAllowedError'&&n!=='AbortError'){S.pinErr='지문·패턴 확인을 하지 못했어요. 비밀번호를 눌러 주세요';updLock();}}
+    if(!auto&&n!=='NotAllowedError'&&n!=='AbortError'){S.pinErr='지문 확인을 하지 못했어요. 다른 방법으로 열어 주세요.';updLock();}}
   finally{S.bioBusy=false;}}
 /* ---------- 앱 패턴 잠금: 3×3 점을 이어 그려서 열어요 (휴대폰 패턴과 따로, 티끌모아 전용) ---------- */
 function patPadHtml(mode){return `<div class="patpad" data-pat="${mode}"><svg class="patsvg" viewBox="0 0 300 300"><polyline points="" /></svg><div class="pd">${[0,1,2,3,4,5,6,7,8].map(i=>`<i data-i="${i}"></i>`).join('')}</div></div>`;}
@@ -84,12 +84,12 @@ const patEnd=e=>{if(!PT)return;const {pad,seq}=PT;patHit(Object.assign({},{clien
 document.addEventListener('pointerup',patEnd);document.addEventListener('pointercancel',patEnd);
 function patClear(pad,bad){if(bad)pad.classList.add('bad');setTimeout(()=>{if(!pad.isConnected)return;pad.classList.remove('bad');pad.querySelector('polyline').setAttribute('points','');pad.querySelectorAll('.pd i').forEach(d=>d.classList.remove('on'));},bad?600:150);}
 async function patDone(pad,seq){const mode=pad.dataset.pat;if(!seq.length)return;
-  if(seq.length<4){patClear(pad,true);if(mode==='lock'){S.pinErr='점을 4개 이상 이어 주세요';updLock();}else{S.patDraft.err='점을 4개 이상 이어 주세요';renderSheet();}return;}
-  if(mode==='lock'){const wait=lockWait();if(wait){S.pinErr=`여러 번 틀렸어요. ${wait}초 뒤에 다시 그려 주세요`;updLock();patClear(pad,true);return;}
+  if(seq.length<4){patClear(pad,true);if(mode==='lock'){S.pinErr='점을 4개 이상 이어 주세요.';updLock();}else{S.patDraft.err='점을 4개 이상 이어 주세요.';renderSheet();}return;}
+  if(mode==='lock'){const wait=lockWait();if(wait){S.pinErr=`여러 번 틀렸어요. ${wait}초 뒤에 다시 그려 주세요.`;updLock();patClear(pad,true);return;}
     const p=S.settings.pat;const h=await hashPin(seq.join('-'),p.salt);if(h===p.hash){pinFails(0);ghostUntil=Date.now()+350;S.locked=false;S.unlockedOnce=true;S.pinIn='';S.pinErr='';markActive();render();}
-    else{const n=pinFails(1);S.pinErr=n>=5?`5번 틀렸어요. ${lockWait()}초 뒤에 다시 그려 주세요`:`패턴이 달라요 (${n}/5)`;updLock();patClear(pad,true);}return;}
+    else{const n=pinFails(1);S.pinErr=n>=5?`5번 틀렸어요. ${lockWait()}초 뒤에 다시 그려 주세요.`:`패턴이 달라요. (${n}/5)`;updLock();patClear(pad,true);}return;}
   const d=S.patDraft;if(d.step===1){d.first=seq.join('-');d.step=2;d.err='';renderSheet();return;}
-  if(seq.join('-')!==d.first){d.step=1;d.first='';d.err='처음 그린 패턴과 달라요. 다시 그려 주세요';renderSheet();return;}
+  if(seq.join('-')!==d.first){d.step=1;d.first='';d.err='처음 그린 패턴과 달라요. 다시 그려 주세요.';renderSheet();return;}
   const salt=newId();const hash=await hashPin(d.first,salt);saveSettings({pat:{salt,hash}});S.patDraft=null;toast('패턴을 설정했어요');renderSheet();}
 function padHtml(){return `<div class="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-act="pinKey" data-k="${n}">${n}</button>`).join('')}<span></span><button data-act="pinKey" data-k="0">0</button><button data-act="pinKey" data-k="back" aria-label="지우기">⌫</button></div>`;}
 function dotsHtml(n,bad){return `<div class="pdots ${bad?'bad':''}">${[0,1,2,3].map(i=>`<i class="${i<n?'on':''}"></i>`).join('')}</div>`;}
@@ -104,7 +104,7 @@ const FPI='<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="c
 // 지문·패턴을 켠 기기는 먼저 '지문 / 패턴 / 비밀번호' 중 고르게 해요. 저절로 창을 띄우지 않아요
 const hasPat=()=>!!(S.settings.pat&&S.settings.pat.hash);// 설정을 받기 전엔 이 기기에 기억해 둔 값으로 판단
 const patOn=()=>S.settingsReady?hasPat():(()=>{try{return localStorage.getItem('moneybook.patOn')==='1';}catch(e){return false;}})();
-function lockWay(){if(S.lockWay==='pin'||(S.lockWay==='pat'&&patOn()))return S.lockWay;return (bioGet()||patOn())?'choose':'pin';}
+function lockWay(){if(S.lockWay==='pin'||(S.lockWay==='pat'&&patOn()))return S.lockWay;return 'choose';}
 function renderLock(){const r=$('#lockRoot');const on=lockOn();document.documentElement.classList.toggle('locked',on);
   // 풀릴 때 잠금 화면을 0.35초 동안 투명하게 남겨 둬서, 마지막 숫자를 누른 손가락이 뒤 화면 버튼을 잘못 누르지 않게 해요
   if(!on){const l=r.querySelector('.lock');if(l&&!l.classList.contains('bye')){l.classList.add('bye');setTimeout(()=>{if(!lockOn())r.innerHTML='';},350);}else if(!l)r.innerHTML='';return;}
@@ -113,10 +113,10 @@ function renderLock(){const r=$('#lockRoot');const on=lockOn();document.document
   const way=lockWay();const PAT='<svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M5 5h7l7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
   const KEY='<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="18" height="11" rx="2"/><circle cx="7.5" cy="12.5" r="1" fill="currentColor"/><circle cx="12" cy="12.5" r="1" fill="currentColor"/><circle cx="16.5" cy="12.5" r="1" fill="currentColor"/></svg>';
   const head2=`<div class="lock" role="dialog" aria-label="잠금 해제"><img src="logo-mark.svg" alt="" width="72" height="72" style="border-radius:18px;box-shadow:0 4px 14px rgba(0,0,0,.18)"><h2>티끌모아</h2>`;
-  if(way==='choose'){r.innerHTML=head2+`<div>잠금 해제 방법을 선택하세요</div><div class="lkch">${bioGet()?`<button data-act="lockWay" data-k="fp">${FPI.replace(/width="26" height="26"/,'width="40" height="40"')}<span>지문</span></button>`:''}${patOn()?`<button data-act="lockWay" data-k="pat">${PAT}<span>패턴</span></button>`:''}<button data-act="lockWay" data-k="pin">${KEY}<span>비밀번호</span></button></div><div class="perr" id="lockErr">${esc(S.pinErr)}</div><button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div>`;return;}
-  const back=(bioGet()||patOn())?`<button class="lk-back" data-act="lockWay" data-k="choose">‹ 다른 방법으로 열기</button>`:'';
-  if(way==='pat'){r.innerHTML=head2+`<div>패턴을 그려 주세요</div><div class="perr" id="lockErr">${esc(S.pinErr)}</div>${patPadHtml('lock')}${back}<button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div>`;return;}
-  r.innerHTML=head2+`<div>비밀번호 4자리를 입력하세요</div><div id="lockDots">${dotsHtml(S.pinIn.length,!!S.pinErr)}</div><div class="perr" id="lockErr">${esc(S.pinErr)}</div>${padHtml()}${back}<button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div>`;}
+  if(way==='choose'){r.innerHTML=head2+`<div>잠금 해제 방법을 선택하세요.</div><div class="lkch"><button data-act="lockWay" data-k="fp">${FPI.replace(/width="26" height="26"/,'width="40" height="40"')}<span>지문</span></button><button data-act="lockWay" data-k="pat">${PAT}<span>패턴</span></button><button data-act="lockWay" data-k="pin">${KEY}<span>비밀번호</span></button></div><div class="perr" id="lockErr">${esc(S.pinErr)}</div><button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div>`;return;}
+  const back=true?`<button class="lk-back" data-act="lockWay" data-k="choose">‹ 다른 방법으로 열기</button>`:'';
+  if(way==='pat'){r.innerHTML=head2+`<div>패턴을 그려 주세요.</div><div class="perr" id="lockErr">${esc(S.pinErr)}</div>${patPadHtml('lock')}${back}<button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div>`;return;}
+  r.innerHTML=head2+`<div>비밀번호 4자리를 입력하세요.</div><div id="lockDots">${dotsHtml(S.pinIn.length,!!S.pinErr)}</div><div class="perr" id="lockErr">${esc(S.pinErr)}</div>${padHtml()}${back}<button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div>`;}
 // 틀린 횟수는 기기에 기억해서 새로고침해도 초기화되지 않아요. 5번부터 30초, 60초… 기다려야 해요.
 function pinFails(add){let o={n:0,at:0};try{o=JSON.parse(localStorage.getItem('moneybook.pinFail')||'{}');}catch(e){}o.n=add?(o.n||0)+1:0;o.at=Date.now();try{localStorage.setItem('moneybook.pinFail',JSON.stringify(o));}catch(e){}return o.n;}
 function lockWait(){let o={};try{o=JSON.parse(localStorage.getItem('moneybook.pinFail')||'{}');}catch(e){}if((o.n||0)<5)return 0;const ms=Math.min(600,30*Math.pow(2,o.n-5))*1000-(Date.now()-(o.at||0));return ms>0?Math.ceil(ms/1000):0;}
@@ -202,7 +202,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=40; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=41; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -749,7 +749,7 @@ const SHEETS={
   <div class="kp" style="padding:10px max(16px,env(safe-area-inset-left,0px)) calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:8px"><button class="btn pri" data-act="close">적용</button></div>`;},
 
  pin(){const d=S.pinDraft;const st=S.settings;
-  if(S.patDraft){const pd=S.patDraft;return head('패턴 설정')+`<div class="pinbox"><div class="pin-step"><span class="${pd.step===1?'on':''}">1</span><i></i><span class="${pd.step===2?'on':''}">2</span></div><b class="pin-t">${pd.step===1?'새 패턴을 그려 주세요':'한 번 더 그려 주세요'}</b><span class="pin-s">점을 4개 이상 이어서 그려요</span><div class="err pin-e">${esc(pd.err||'')}</div>${patPadHtml('set')}<button class="btn" data-act="patCancel" style="margin-top:10px">취소</button></div>`;}
+  if(S.patDraft){const pd=S.patDraft;return head('패턴 설정')+`<div class="pinbox"><div class="pin-step"><span class="${pd.step===1?'on':''}">1</span><i></i><span class="${pd.step===2?'on':''}">2</span></div><b class="pin-t">${pd.step===1?'새 패턴을 그려 주세요':'한 번 더 그려 주세요'}</b><span class="pin-s">점을 4개 이상 이어서 그려요.</span><div class="err pin-e">${esc(pd.err||'')}</div>${patPadHtml('set')}<button class="btn" data-act="patCancel" style="margin-top:10px">취소</button></div>`;}
   if(d){return head('비밀번호 잠금')+`<div class="pinbox"><img src="logo-mark.svg" alt="" width="56" height="56"><div class="pin-step"><span class="${d.step===1?'on':''}">1</span><i></i><span class="${d.step===2?'on':''}">2</span></div>
     <b class="pin-t">${d.step===1?'새 비밀번호 4자리':'한 번 더 입력해 주세요'}</b><span class="pin-s">${d.step===1?'가계부를 열 때 쓸 번호예요':'확인을 위해 같은 번호를 눌러 주세요'}</span>
     ${dotsHtml(d.cur.length,!!d.err)}<div class="err pin-e">${esc(d.err||'')}</div>${padHtml()}</div>`;}
@@ -941,7 +941,7 @@ const ACT={
   if(!S.user||!window.firebase)return;try{const pr=new firebase.auth.GoogleAuthProvider();pr.setCustomParameters({prompt:'select_account',login_hint:S.user.email||''});
    const r=await firebase.auth().currentUser.reauthenticateWithPopup(pr);if(!r||!r.user||r.user.uid!==S.user.uid)throw 0;
    pinFails(0);bioSet(null);await saveSettings({pin:null,pat:null});S.locked=false;S.unlockedOnce=true;S.pinIn='';S.pinErr='';markActive();render();toast('잠금을 껐어요. 설정에서 새 비밀번호를 정해 주세요');}
-  catch(e){const c=(e&&e.code)||'';if(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request')return;S.pinErr=c==='auth/user-mismatch'?'가계부 주인 계정으로 확인해야 해요':'구글 확인을 하지 못했어요';updLock();}},
+  catch(e){const c=(e&&e.code)||'';if(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request')return;S.pinErr=c==='auth/user-mismatch'?'가계부 주인 계정으로 확인해야 해요.':'구글 확인을 하지 못했어요.';updLock();}},
  async logoutNow(){try{await firebase.auth().signOut();}catch(e){}try{await S.fs.terminate();await S.fs.clearPersistence();}catch(e){}
   try{Object.keys(localStorage).filter(k=>k.startsWith('moneybook.f.')||k==='moneybook.pinOn').forEach(k=>localStorage.removeItem(k));}catch(e){}location.reload();},
  nkEdit(){S.nkEdit=true;renderSheet();setTimeout(()=>{const i=document.getElementById('nk-in');if(i){i.focus();i.select();}},50);},
@@ -1154,7 +1154,7 @@ const ACT={
  xlsIn(){const i=document.getElementById('xl-in');if(i)i.click();},
  pinStart(){S.pinDraft={step:1,first:'',cur:'',err:''};renderSheet();},
  bioUnlock(){bioUnlock(false);},
- lockWay(el){const k=el.dataset.k;S.pinErr='';if(k==='fp'){bioUnlock(false);return;}S.lockWay=k==='pin'||k==='pat'?k:'';S.pinIn='';$('#lockRoot').innerHTML='';renderLock();},
+ lockWay(el){const k=el.dataset.k;S.pinErr='';if(k==='fp'){if(!bioGet()){S.afterUnlock='fp';S.lockWay='pin';S.pinErr='이 기기에 아직 지문이 등록되지 않았어요. 비밀번호로 연 다음 바로 등록해요.';S.pinIn='';$('#lockRoot').innerHTML='';renderLock();return;}bioUnlock(false);return;}if(k==='pat'&&!patOn()){S.afterUnlock='pat';S.lockWay='pin';S.pinErr='아직 패턴이 없어요. 비밀번호로 연 다음 바로 패턴을 정해요.';S.pinIn='';$('#lockRoot').innerHTML='';renderLock();return;}S.lockWay=k==='pin'||k==='pat'?k:'';S.pinIn='';$('#lockRoot').innerHTML='';renderLock();},
  async bioOn(){if(!(await bioAvail())){S.bioOk=false;renderSheet();toast('이 기기에서는 지문·패턴 확인을 쓸 수 없어요');return;}
   try{await bioRegister();toast('지문으로 열기를 켰어요');}catch(e){toast(e&&e.name==='NotAllowedError'?'취소했어요':'켜지 못했어요 ('+((e&&e.name)||'오류')+')');}renderSheet();},
  bioOff(){bioSet(null);toast('지문으로 열기를 껐어요');renderSheet();},
@@ -1163,8 +1163,8 @@ const ACT={
  patOff(){saveSettings({pat:null});toast('패턴 잠금을 껐어요');renderSheet();},
  pinOff(){bioSet(null);saveSettings({pin:null,pat:null});toast('잠금을 껐어요');renderSheet();},
  async pinKey(el){const k=el.dataset.k;
-  if(lockOn()){const wait=lockWait();if(wait){S.pinIn='';S.pinErr=`여러 번 틀렸어요. ${wait}초 뒤에 다시 입력하세요`;updLock();return;}if(k==='back'){S.pinIn=S.pinIn.slice(0,-1);S.pinErr='';updLock();return;}if(S.pinIn.length>=4)return;S.pinIn+=k;S.pinErr='';updLock();
-    if(S.pinIn.length===4){if(!S.settings.pin){S.pinIn='';S.pinErr='잠금 정보를 불러오는 중이에요. 잠시 뒤 다시 눌러주세요';updLock();return;}const h=await hashPin(S.pinIn,S.settings.pin.salt);if(h===S.settings.pin.hash){pinFails(0);S.locked=false;S.unlockedOnce=true;S.pinIn='';markActive();render();}else{const n=pinFails(1);S.pinIn='';S.pinErr=n>=5?`5번 틀렸어요. ${lockWait()}초 뒤에 다시 입력하세요`:`비밀번호가 달라요 (${n}/5)`;updLock();}}return;}
+  if(lockOn()){const wait=lockWait();if(wait){S.pinIn='';S.pinErr=`여러 번 틀렸어요. ${wait}초 뒤에 다시 입력하세요.`;updLock();return;}if(k==='back'){S.pinIn=S.pinIn.slice(0,-1);S.pinErr='';updLock();return;}if(S.pinIn.length>=4)return;S.pinIn+=k;S.pinErr='';updLock();
+    if(S.pinIn.length===4){if(!S.settings.pin){S.pinIn='';S.pinErr='잠금 정보를 불러오는 중이에요. 잠시 뒤 다시 눌러 주세요.';updLock();return;}const h=await hashPin(S.pinIn,S.settings.pin.salt);if(h===S.settings.pin.hash){pinFails(0);S.locked=false;S.unlockedOnce=true;S.pinIn='';S.pinErr='';markActive();render();if(S.afterUnlock==='pat'){S.afterUnlock='';setTimeout(()=>{S.patDraft={step:1,first:'',err:''};openSheet('pin');},400);}else if(S.afterUnlock==='fp'){S.afterUnlock='';setTimeout(()=>{S.patDraft=null;ACT.open({dataset:{k:'pin'}});},400);}}else{const n=pinFails(1);S.pinIn='';S.pinErr=n>=5?`5번 틀렸어요. ${lockWait()}초 뒤에 다시 입력하세요.`:`비밀번호가 달라요. (${n}/5)`;updLock();}}return;}
   const d=S.pinDraft;if(!d)return;if(k==='back'){d.cur=d.cur.slice(0,-1);d.err='';updDraft();return;}if(d.cur.length>=4)return;d.cur+=k;d.err='';updDraft();
   if(d.cur.length===4){if(d.step===1){d.first=d.cur;d.cur='';d.step=2;setTimeout(renderSheet,150);}
     else if(d.cur===d.first){const salt=newId();const hash=await hashPin(d.cur,salt);saveSettings({pin:{salt,hash}});S.unlockedOnce=true;markActive();S.pinDraft=null;toast('비밀번호를 설정했어요');closeSheet();}

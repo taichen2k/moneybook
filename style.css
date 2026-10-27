@@ -585,3 +585,21 @@ button.acc:active{background:var(--sunk)}
 .card.bioc{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding:14px 16px;background:var(--bg)}
 .card.bioc b{display:block;font-size:16px}.card.bioc small{display:block;font-size:13px;margin-top:2px}
 .card.bioc .btn.sm{flex:none;padding:10px 16px}
+/* v31 */
+.sum.four{grid-template-columns:repeat(4,1fr)}
+.sum.four b{font-size:17px}
+.sugw{position:relative}
+.sug{position:absolute;left:68px;right:0;top:100%;z-index:20;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.16);overflow:hidden;max-height:300px;overflow-y:auto}
+.sug button{display:flex;flex-direction:column;align-items:flex-start;width:100%;padding:11px 14px;text-align:left;border-bottom:1px solid var(--line);color:var(--ink)}
+.sug button span{font-size:16px}.sug button small{font-size:12.5px;color:var(--muted);margin-top:2px}
+.sug button:active{background:var(--sunk)}
+.tm{color:var(--muted);font-size:12px}
+.memos{border-radius:var(--r)}
+.memo-i{display:flex;gap:14px;align-items:flex-start;width:100%;text-align:left;padding:15px 16px;border-bottom:1px solid var(--line);color:var(--ink)}
+.memo-i .num{flex:none;font-size:14px;padding-top:2px}.memo-i .mt{white-space:pre-wrap;word-break:break-all;font-size:16px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.empty.nodata{display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--muted);opacity:.7;padding:120px 16px}
+.memofab{display:flex;align-items:center;justify-content:center;background:var(--surface)!important;color:var(--accent-ink)!important;border:1.5px solid var(--accent)}
+.ali .gsel{flex:1;display:flex;align-items:center;gap:10px;min-height:54px;text-align:left;color:inherit}
+.ali .gsel span{flex:1}
+.ali button.eye{display:flex;color:var(--muted);padding:6px}
+.ali input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}

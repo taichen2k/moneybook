@@ -655,3 +655,10 @@ button.acc:active{background:var(--sunk)}
 .acv{display:flex;flex-direction:column;align-items:flex-end;gap:8px}.acv b{font-weight:500}
 .gic{display:flex;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);align-items:center;justify-content:center;background:#fff}
 .mp2 .gedit{margin:8px}
+/* v37: 큰 숫자가 좁은 폰에서 잘리지 않게 화면 너비에 맞춰 줄어들어요 */
+.sum b{font-size:clamp(15px,5.2vw,20px)}
+.sum.four b{font-size:clamp(13px,4.2vw,17px)}
+.net b,.net.four b{font-size:clamp(13px,4.3vw,16px)}
+.ovbig b,.scbig b,.big{font-size:clamp(22px,7.5vw,28px)}
+.ovbig b,.scbig b,.big,.sum b,.net b{white-space:nowrap;overflow:hidden;text-overflow:clip}
+@media (max-width:340px){.lnav .mlab{font-size:17px!important}.lnav button{width:20px}.hic button{width:28px}.hic svg{width:19px;height:19px}.hic .sync{display:none}.lhead{gap:2px}}

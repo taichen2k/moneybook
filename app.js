@@ -168,7 +168,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=36; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=37; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -241,11 +241,13 @@ const HICON={chart:'<svg viewBox="0 0 24 24"><path d="M4 20h16M7 17v-5M11 17V8M1
   search:'<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>',
   set:'<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>'};
 
+// 숫자가 칸보다 길면(억 단위 등) 글자를 조금씩 줄여서 잘리지 않게 해요
+function fitNums(){document.querySelectorAll('.sum b,.net b,.ovbig b,.scbig b,.big,.grp-h.cc em,.acc .num').forEach(el=>{el.style.fontSize='';let f=parseFloat(getComputedStyle(el).fontSize),n=0;while(el.scrollWidth>el.clientWidth+1&&f>10&&n++<12){f-=1;el.style.fontSize=f+'px';}});}
 function render(){renderLock();
   if(lockOn()){setHtml($('#top'),'');$('#view').innerHTML='';$('#tabs').hidden=true;$('#fab').hidden=true;if(S.sheet)closeSheet();return;}
   $('#tabs').hidden=false;renderTop();renderView();if(S.sheet==='filter')renderSheet();
   setHtml($('#tabs .in'),TABS.map(([k,n])=>`<button data-act="tab" data-k="${k}" class="${S.tab===k?'on':''}" aria-label="${n}">${ICONS[k]}<span>${n}</span></button>`).join(''));
-  $('#fab').hidden=!S.db||!S.canWrite||S.tab==='more'||(S.tab==='list'&&S.sub==='memo');}
+  $('#fab').hidden=!S.db||!S.canWrite||S.tab==='more'||(S.tab==='list'&&S.sub==='memo');try{fitNums();}catch(e){}}
 
 function carryBefore(d){const ms=allMonths().filter(ym=>ym<=d.slice(0,7));const miss=ms.filter(ym=>!S.live[ym]&&!S.cache[ym]);if(miss.length)ensureMonths(miss);
   let n=S.settings.accounts.reduce((x,a)=>x+(Number(a.init)||0),0)*0;for(const ym of ms)for(const t of txOf(ym))if(t.date<d){const k=kindOf(t);if(k==='inc')n+=t.amount;else if(k==='exp')n-=t.amount;}return n;}

@@ -43,7 +43,7 @@ function statPeriod(){if(S.sp==='week'){const a=S.spWeek||today();const st=addDa
 async function hashPin(pin,salt){const txt=salt+':'+pin;try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(txt));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');}
   catch(e){let h=2166136261;for(const c of txt){h^=c.charCodeAt(0);h=Math.imul(h,16777619)>>>0;}return 'f'+h.toString(16);}}
 function padHtml(){return `<div class="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-act="pinKey" data-k="${n}">${n}</button>`).join('')}<span></span><button data-act="pinKey" data-k="0">0</button><button data-act="pinKey" data-k="back" aria-label="지우기">⌫</button></div>`;}
-function dotsHtml(n,bad){return `<div class="pdots ${bad?'bad':''}">${[0,1,2,3].map(i=>`<i class="${i<n?'f':''}"></i>`).join('')}</div>`;}
+function dotsHtml(n,bad){return `<div class="pdots ${bad?'bad':''}">${[0,1,2,3].map(i=>`<i class="${i<n?'on':''}"></i>`).join('')}</div>`;}
 function renderLock(){const r=$('#lockRoot');if(!(S.locked&&S.settings.pin)){r.innerHTML='';return;}
   r.innerHTML=`<div class="lock" role="dialog" aria-label="비밀번호 입력"><img src="logo-mark.svg" alt="" width="72" height="72" style="border-radius:18px;box-shadow:0 4px 14px rgba(0,0,0,.18)"><h2>티끌모아</h2><div>비밀번호 4자리를 입력하세요</div>${dotsHtml(S.pinIn.length,!!S.pinErr)}<div class="perr">${esc(S.pinErr)}</div>${padHtml()}</div>`;}
 const dot2=s=>s.slice(2).replace(/-/g,'.');
@@ -84,7 +84,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=14; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=15; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -339,6 +339,15 @@ function panelHtml(f){const p=f.panel;
     <p class="muted" style="padding:8px 16px 12px;margin:0">매월 반복은 다음 달부터 같은 날짜에 자동으로 적혀요. 할부는 금액을 나눠 달마다 한 건씩 적어요.</p>`;}
   return '';}
 
+// 검색 결과만 다시 그려요. 검색창은 건드리지 않아서 한글 조합(ㄱ+ㅏ→가)이 끊기지 않아요.
+function searchResults(){const q=S.search.trim();const ms=allMonths();const loading=ms.some(ym=>!S.live[ym]&&!S.cache[ym]);
+  if(loading)return '<div class="empty">전체 내역을 불러오는 중…</div>';if(!q)return '<div class="empty">검색어를 입력하세요</div>';
+  const words=q.normalize('NFC').toLowerCase().replace(/,/g,'').split(/\s+/).filter(Boolean);
+  const hay=t=>[t.memo,t.note,t.cat,t.sub,accName(t.acc),t.to?accName(t.to):'',String(t.amount),won(t.amount),t.date].join(' ').normalize('NFC').toLowerCase().replace(/,/g,'');
+  const all=ms.flatMap(txOf).filter(t=>{const h=hay(t);return words.every(w=>h.includes(w));}).sort((a,b)=>b.date.localeCompare(a.date)||(b.time||'').localeCompare(a.time||''));
+  if(!all.length)return '<div class="empty">찾는 내역이 없어요</div>';const sum=totals(all);const res=all.slice(0,300);
+  return `<div class="sinfo num">${all.length}건 · 수입 <span class="inc">${won(sum.inc)}원</span> · 지출 <span class="exp">${won(sum.exp)}원</span>${all.length>res.length?` · 최근 ${res.length}건만 표시`:''}</div>`+dayGroups(res);}
+function updateSearch(){const r=document.getElementById('sres');if(r&&S.sheet==='search')r.innerHTML=searchResults();}
 const SHEETS={
  tx(){const f=S.form;const edit=!!f.orig;const val=calc(f.amountStr);const ops=/[+\-*/×÷−]/.test(f.amountStr.replace(/^-/,''));
   const [yy,mm,dd]=f.date.split('-');const dl=`${yy.slice(2)}. ${mm}. ${dd}. (${DOW[dowOf(f.date)]})`;
@@ -369,12 +378,9 @@ const SHEETS={
     const n=s.items.filter(x=>x.on).length;h+=`<div class="acts"><button class="btn pri" data-act="smsSave" ${n?'':'disabled'}>선택한 ${n}건 저장</button></div>`;}}
   return h;},
 
- search(){const q=S.search.trim();const ms=allMonths();const loading=ms.some(ym=>!S.live[ym]&&!S.cache[ym]);
-  let res=[];if(q&&!loading){const ql=q.toLowerCase().replace(/,/g,'');res=ms.flatMap(txOf).filter(t=>((t.memo||'')+' '+(t.note||'')).toLowerCase().includes(ql)||(t.cat||'').toLowerCase().includes(ql)||(t.sub||'').toLowerCase().includes(ql)||String(t.amount).includes(ql)||accName(t.acc).toLowerCase().includes(ql)).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,200);}
-  const sum=totals(res);
-  return `<div class="txb fl0"><div class="txh"><button class="x" data-act="close" aria-label="닫기">←</button><h2>검색</h2></div>
-  <div class="sbox">${HICON.search}<input id="q" placeholder="가게 이름, 분류, 금액, 카드" value="${esc(S.search)}" autocomplete="off" enterkeyhint="search"></div></div>
-  <div class="sres">${loading?'<div class="empty">전체 내역을 불러오는 중…</div>':q?(res.length?`<div class="sinfo num">${res.length}건 · 수입 <span class="inc">${won(sum.inc)}원</span> · 지출 <span class="exp">${won(sum.exp)}원</span></div>`+dayGroups(res):'<div class="empty">찾는 내역이 없어요</div>'):'<div class="empty">검색어를 입력하세요</div>'}</div>`;},
+ search(){return `<div class="txb fl0"><div class="txh"><button class="x" data-act="close" aria-label="닫기">←</button><h2>검색</h2></div>
+  <div class="sbox">${HICON.search}<input id="q" type="search" placeholder="가게 이름, 분류, 금액, 카드" value="${esc(S.search)}" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search"></div></div>
+  <div class="sres" id="sres">${searchResults()}</div>`;},
 
  budget(){const d=S.budDraft;return head('예산')+`<p style="margin:0;font-size:14px;color:var(--muted)">한 달 지출 목표예요. 0이면 표시하지 않아요.</p>
   <div class="f"><label for="b-total">월 전체 예산</label><input class="in-t num" id="b-total" inputmode="numeric" value="${d.total?won(d.total):''}" placeholder="예: 2,500,000"></div>
@@ -432,7 +438,9 @@ const SHEETS={
   <div class="kp" style="padding:10px max(16px,env(safe-area-inset-left,0px)) calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:8px"><button class="btn pri" data-act="close">적용</button></div>`;},
 
  pin(){const d=S.pinDraft;const st=S.settings;
-  if(d){return head(d.step===1?'새 비밀번호':'한 번 더 입력')+`<p style="margin:0;text-align:center;color:var(--muted)">${d.step===1?'숫자 4자리를 입력하세요':'확인을 위해 같은 번호를 입력하세요'}</p>${dotsHtml(d.cur.length,!!d.err)}<div class="err" style="text-align:center">${esc(d.err||'')}</div>${padHtml()}`;}
+  if(d){return head('비밀번호 잠금')+`<div class="pinbox"><img src="logo-mark.svg" alt="" width="56" height="56"><div class="pin-step"><span class="${d.step===1?'on':''}">1</span><i></i><span class="${d.step===2?'on':''}">2</span></div>
+    <b class="pin-t">${d.step===1?'새 비밀번호 4자리':'한 번 더 입력해 주세요'}</b><span class="pin-s">${d.step===1?'가계부를 열 때 쓸 번호예요':'확인을 위해 같은 번호를 눌러 주세요'}</span>
+    ${dotsHtml(d.cur.length,!!d.err)}<div class="err pin-e">${esc(d.err||'')}</div>${padHtml()}</div>`;}
   return head('비밀번호 잠금')+`<p style="margin:0;font-size:14px;color:var(--muted)">가계부를 열 때 4자리 비밀번호를 물어봐요. 모든 휴대폰에 똑같이 적용돼요. 지문·얼굴 인식은 이 화면에서 쓸 수 없어요.</p>
   ${st.pin?`<div class="f"><label for="lockMin">다시 잠그기</label><select class="in-t" id="lockMin">${[[0,'화면을 벗어나면 바로'],[1,'1분 뒤'],[5,'5분 뒤'],[30,'30분 뒤']].map(([v,n])=>`<option value="${v}" ${(st.lockMin??1)===v?'selected':''}>${n}</option>`).join('')}</select></div>
   <div class="acts"><button class="btn danger" data-act="pinOff">잠금 끄기</button><button class="btn" data-act="pinStart">비밀번호 바꾸기</button></div>`:
@@ -623,7 +631,7 @@ const ACT={
   try{await S.db.collection('tx_'+f.orig.ym).doc(f.orig.id).delete();toast('삭제했어요');closeSheet();}catch(e){f.err=dbErr(e);renderSheet();}},
  open(el){const k=el.dataset.k;
   if(k==='sms'){if(S.sheet==='tx')readForm();S.sms={text:'',items:null};}
-  if(k==='search'){S.search='';ensureMonths(allMonths(),true).then(()=>{if(S.sheet==='search')renderSheet();});}
+  if(k==='search'){S.search='';ensureMonths(allMonths(),true).then(updateSearch);}
   if(k==='budget')S.budDraft={total:(S.settings.budget||{}).total||0,cats:Object.assign({},(S.settings.budget||{}).cats||{})};
   if(k==='accounts')S.accDraft=clone(S.settings.accounts);
   if(k==='recurring')S.recDraft={type:'exp',day:new Date().getDate(),amount:0,cat:'',acc:lastAcc(),to:'',memo:'',now:false};
@@ -672,9 +680,10 @@ const ACT={
 document.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(!el)return;if(el.tagName==='INPUT'&&el.type==='checkbox'&&e.type==='click'){ACT[el.dataset.act]&&ACT[el.dataset.act](el,e);return;}const f=ACT[el.dataset.act];if(f)f(el,e);});
 document.addEventListener('input',e=>{const t=e.target;
   if(t.id==='f-amt'&&S.form){S.form.amountStr=t.value;const v=calc(t.value);const c=document.getElementById('f-calc');if(c)c.textContent=/[+\-*/×÷−]/.test(t.value.replace(/^-/,''))&&!isNaN(v)?'= '+won(v)+'원':'';}
-  if(t.id==='q'){S.search=t.value;clearTimeout(ACT._qt);ACT._qt=setTimeout(()=>{renderSheet();const q=document.getElementById('q');if(q){q.focus();q.setSelectionRange(q.value.length,q.value.length);}},250);}
+  if(t.id==='q'){S.search=t.value;clearTimeout(ACT._qt);ACT._qt=setTimeout(updateSearch,200);}
   if(t.id==='sms-text'&&S.sms)S.sms.text=t.value;
   if(t.id==='memo-text'&&S.memo){S.memo.text=t.value;const st=document.getElementById('memo-st');if(st)st.textContent=t.value===S.memo.saved?'저장됨':'저장 안 됨';}});
+document.addEventListener('compositionend',e=>{if(e.target&&e.target.id==='q'){S.search=e.target.value;clearTimeout(ACT._qt);ACT._qt=setTimeout(updateSearch,50);}});
 document.addEventListener('change',e=>{const t=e.target;
   if(t.dataset&&t.dataset.fg){const g=t.dataset.fg;const tab=S.fTab;const F=Object.assign({},S.filter);
     if(g==='all'){const keys=tab==='acc'?S.settings.accounts.map(a=>a.id):(S.settings.cats[tab]||[]);F[tab]=t.checked?keys.slice():[];}

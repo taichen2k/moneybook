@@ -230,17 +230,32 @@ textarea.in-t{min-height:130px;resize:vertical;font-size:14px}
 .lock{position:fixed;inset:0;z-index:40;background:var(--accent);color:var(--on-accent);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:calc(24px + env(safe-area-inset-top,0px)) calc(24px + env(safe-area-inset-bottom,0px))}
 .lock h2{font-family:var(--f-display);font-weight:800;margin:0;font-size:24px}
-.pdots{display:flex;gap:16px}
-.pdots i{width:16px;height:16px;border-radius:50%;border:2px solid currentColor}
-.pdots i.f{background:currentColor}
+.pdots{display:flex;gap:16px;align-items:center}
+.pdots i{display:block;box-sizing:border-box;width:16px;height:16px;border-radius:50%;border:2px solid currentColor}
+.pdots i.on{background:currentColor}
 .pdots.bad{animation:shake .35s}
 @keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
 .perr{min-height:20px;font-size:14px;opacity:.9}
-.pad{display:grid;grid-template-columns:repeat(3,76px);gap:12px}
-.pad button{height:64px;border-radius:50%;font-size:26px;font-weight:500;color:inherit}
+.pad{display:grid;grid-template-columns:repeat(3,76px);gap:14px 22px;justify-content:center}
+.pad button{width:76px;height:76px;border-radius:50%;font-size:28px;font-weight:600;color:inherit;background:rgba(255,255,255,.18)}
+.pad button[data-k="back"]{background:transparent}
 .pad button:hover{background:rgba(255,255,255,.12)}
-.sheet .pad{margin:12px auto 0;color:var(--ink)} .sheet .pad button{background:var(--sunk)}
-.sheet .pdots{justify-content:center;color:var(--accent-ink);margin-top:6px}
+.sheet .pad{grid-template-columns:repeat(3,72px);gap:14px 24px;justify-content:center;width:max-content;margin:6px auto 4px;color:var(--ink)}
+.sheet .pad button{width:72px;height:72px;background:var(--sunk);font-size:28px;font-weight:600;transition:background .12s,transform .08s}
+.sheet .pad button:active{background:var(--accent-soft);transform:scale(.94)}
+.sheet .pad button[data-k="back"]{background:transparent;font-size:24px;color:var(--muted)}
+.pinbox{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:4px 0 8px}
+.pinbox img{border-radius:16px;box-shadow:0 4px 14px rgba(0,0,0,.12);margin-bottom:4px}
+.pin-step{display:flex;align-items:center;gap:6px;margin:2px 0}
+.pin-step span{width:24px;height:24px;border-radius:50%;background:var(--sunk);color:var(--muted);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.pin-step span.on{background:var(--accent);color:var(--on-accent)}
+.pin-step i{width:22px;height:2px;background:var(--line);border-radius:1px}
+.pin-t{font-size:20px;letter-spacing:-.02em}
+.pin-s{font-size:14px;color:var(--muted)}
+.pinbox .pdots{margin:14px 0 2px;gap:18px}
+.pinbox .pdots i{width:18px;height:18px}
+.pin-e{min-height:20px;margin:0}
+.sheet .pdots{justify-content:center;color:var(--accent-ink)}
 .back{color:var(--accent-ink);font-weight:600;padding:6px 2px 12px;font-size:15px}
 .lhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .lnav{display:flex;align-items:center;gap:2px}

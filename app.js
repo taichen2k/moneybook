@@ -203,7 +203,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=57; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=58; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -298,7 +298,7 @@ function renderTop(){const top=$('#top');const sc=!S.db?'off':GH.err?'off':S.db.
     setHtml(top,h);return;}
   if(S.db&&!S.needSetup&&S.tab==='asset'&&S.overview){const [oy,om]=(S.ovLabel||S.label).split('-');h=`<div class="ttl"><b><button class="x back2" data-act="ovw" data-k="0" aria-label="뒤로">←</button>전체통계</b><span class="lnav"><button data-act="ovShift" data-k="-1" aria-label="이전">‹</button><b class="num">${oy}년 ${+om}월</b><button data-act="ovShift" data-k="1" aria-label="다음">›</button></span></div>`;setHtml(top,h);return;}
   if(S.db&&!S.needSetup&&S.tab==='asset'){h=S.av?avTop(sc,st):`<div class="ttl"><b>자산</b><span class="ttl-r"><button class="x" data-act="ovw" data-k="${S.overview?0:1}" aria-label="전체 통계">${HICON.chart}</button><button class="x dots" data-act="amenu" aria-label="자산 메뉴">⋮</button></span>${S.amenu?`<div class="amenu-ov" data-act="amenuClose"></div><div class="amenu"><button data-act="accNew">추가</button><button data-act="open" data-k="accHide">표시/숨김</button><button data-act="open" data-k="accDel">삭제</button><button data-act="open" data-k="accOrder">순서 변경</button></div>`:''}</div>`;setHtml(top,h);return;}
-  if(S.db&&!S.needSetup&&S.tab==='more'){h=`<div class="ttl"><b>${S.moreView==='set'?'<button class="x back2" data-act="moreBack" aria-label="뒤로">←</button>설정관리':'설정'}</b><span class="muted num" style="font-size:14px">v${APP_VERSION}</span></div>`;setHtml(top,h);return;}
+  if(S.db&&!S.needSetup&&S.tab==='more'){h=`<div class="ttl"><b>${S.moreView==='set'?'<button class="x back2" data-act="moreBack" aria-label="뒤로">←</button>설정관리':'설정'}</b></div>`;setHtml(top,h);return;}
   if(!(S.db&&!S.needSetup&&S.tab==='stat'))h=`<div class="brand"><h1><img src="logo-mark.svg" alt="" width="28" height="28">티끌모아</h1><span class="sync ${sc}"><i></i>${st}</span></div>`;
   if(S.tab==='stat'&&S.statCat&&S.db&&!S.needSetup){const sp=statPeriod();const [y,m]=S.label.split('-');const nav=S.sp==='range'?`<b class="num wkl">${dot2(sp.start)} ~ ${dot2(sp.last)}</b>`:`<span class="lnav"><button data-act="sprev" aria-label="이전">‹</button><b class="num">${S.sp==='year'?(S.spYear||y)+'년':S.sp==='week'?dot2(sp.start)+' ~ '+dot2(sp.last):y+'년 '+(+m)+'월'}</b><button data-act="snext" aria-label="다음">›</button></span>`;
     setHtml(top,`<div class="ttl"><b><button class="x back2" data-act="scClose" aria-label="뒤로">←</button>${esc(S.statCat)}</b>${nav}</div>`);return;}
@@ -555,7 +555,7 @@ function setMgmtHtml(){const st=S.settings;const bt=st.budget&&st.budget.total;c
 function moreHelp(){return `
   <p><b>내 폰·PC 여러 대</b> — 각 기기에서 이 주소를 열고 같은 구글 계정으로 로그인하면 끝이에요. 한쪽에서 입력하면 다른 기기에 바로 나타나요.</p>
   <p><b>가족과 함께</b> — 가족 구글 계정을 허용 목록에 넣으면 같은 장부에 함께 적을 수 있어요. 필요하면 Claude에게 부탁하세요.</p>
-  <p><b>앱처럼 쓰기</b> — 휴대폰 브라우저에서 링크를 연 뒤 ‘홈 화면에 추가’를 누르면 아이콘으로 바로 열려요.</p></div>${footHtml()}`;}
+  <p><b>앱처럼 쓰기</b> — 휴대폰 브라우저에서 링크를 연 뒤 ‘홈 화면에 추가’를 누르면 아이콘으로 바로 열려요.</p></div><div class="card ainfo"><div class="ainfo-h"><b>앱 정보</b><span class="vchip num">v${APP_VERSION}</span></div><p>© 2026 티제이컴퍼니. All rights reserved.</p></div>`;}
 
 /* ---------- sheets ---------- */
 function openSheet(k){if(!S.sheet&&!S.histSheet){try{history.pushState({mbSheet:1},'');S.histSheet=true;}catch(e){}}S.sheet=k;renderSheet();}

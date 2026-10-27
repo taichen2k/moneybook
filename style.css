@@ -746,3 +746,7 @@ html,body{overflow-x:clip}
 .acts3 .btn{white-space:nowrap;padding-left:4px;padding-right:4px;gap:4px;min-width:0}.acts3 .btn svg{width:18px;height:18px}
 .acts3 .btn{font-size:min(1em,4.2vw)}#f-tools[hidden]{display:none}
 .selv{background:rgba(234,161,59,.35);border-radius:3px}
+/* v58 앱 정보 */
+.ainfo{padding:0;overflow:hidden}.ainfo-h{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
+.ainfo-h b{font-size:16px}.vchip{background:var(--sunk);border-radius:999px;padding:3px 10px;font-size:13px;font-weight:600}
+.ainfo p{margin:0;padding:14px 16px;font-size:14px;color:var(--muted)}

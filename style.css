@@ -720,3 +720,11 @@ button.acc:active{background:var(--sunk)}
 .day[data-act]{cursor:pointer}
 .day[data-act]:hover{background:var(--sunk)}
 .sug .sgc{flex-direction:row;border-bottom:0}
+/* v53: 넓은 화면(PC)에서 원그래프가 너무 커져 글자가 잘리던 문제, 머리·아래 메뉴 흰 띠가 화면 끝까지 */
+.piesvg{display:block;max-width:440px;margin:0 auto;overflow:visible}
+.card.pie svg .pl{font-size:14px}
+.card.pie svg .pp{font-size:13px}
+.charts svg{max-width:560px;margin-left:auto;margin-right:auto}
+@media (min-width:700px){
+  .top{box-shadow:0 0 0 100vmax var(--surface);clip-path:inset(0 -100vmax)}
+}

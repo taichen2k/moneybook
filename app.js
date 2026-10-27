@@ -203,7 +203,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=52; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=53; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -389,7 +389,7 @@ function memoHtml(){const ym=S.label;if(!S.memo||S.memo.ym!==ym){S.memo={ym,item
   return `<div class="rows memos">${list.map(x=>`<button class="memo-i" data-act="memoEdit" data-k="${esc(x.id)}"><span class="num muted">${esc((x.date||'').slice(5).replace('-','.'))}</span><span class="mt">${esc(x.text)}</span></button>`).join('')}</div>`+fab;}
 
 const PIE=['#ff6f61','#ff9a4d','#ffcb45','#f0e030','#bfe04a','#7fcf78','#4cc3b8','#4aa3e0','#7b8ae6','#b27be0','#e07bb4','#a8a29a'];
-function pieSvg(items,total){const W=360,H=300,cx=180,cy=150,r=92;let a0=-Math.PI/2;const segs=[],labs=[];
+function pieSvg(items,total){const W=420,H=300,cx=210,cy=150,r=92;let a0=-Math.PI/2;const segs=[],labs=[];
   const pt=(a,rr)=>[cx+rr*Math.cos(a),cy+rr*Math.sin(a)];
   for(const it of items){const f=total?it.v/total:0;const a1=a0+f*2*Math.PI;
     if(f>=0.9999)segs.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${it.c}"/>`);
@@ -397,9 +397,9 @@ function pieSvg(items,total){const W=360,H=300,cx=180,cy=150,r=92;let a0=-Math.P
     const am=(a0+a1)/2;const [ex,ey]=pt(am,r);const [mx,my]=pt(am,r+18);labs.push({it,f,ex,ey,mx,my,right:Math.cos(am)>=0});a0=a1;}
   // 왼쪽·오른쪽 따로 위아래 겹치지 않게 벌려요
   for(const side of [true,false]){const L=labs.filter(l=>l.right===side).sort((a,b)=>a.my-b.my);let last=-1e9;for(const l of L){l.ly=Math.max(l.my,last+34);last=l.ly;}const over=last-(H-14);if(over>0)for(const l of L)l.ly-=over;}
-  const lines=labs.map(l=>{const tx=l.right?Math.max(l.mx,cx+r+8):Math.min(l.mx,cx-r-8);const anc=l.right?'start':'end';const tx2=l.right?tx+6:tx-6;
+  const lines=labs.map(l=>{const tx=l.right?Math.min(Math.max(l.mx,cx+r+8),W-112):Math.max(Math.min(l.mx,cx-r-8),112);const anc=l.right?'start':'end';const tx2=l.right?tx+6:tx-6;
     return `<polyline points="${l.ex.toFixed(1)},${l.ey.toFixed(1)} ${l.mx.toFixed(1)},${l.ly.toFixed(1)} ${tx.toFixed(1)},${l.ly.toFixed(1)}" fill="none" stroke="${l.it.c}" stroke-width="1.2"/><text x="${tx2.toFixed(1)}" y="${(l.ly-2).toFixed(1)}" text-anchor="${anc}" class="pl">${esc(l.it.k)}</text><text x="${tx2.toFixed(1)}" y="${(l.ly+14).toFixed(1)}" text-anchor="${anc}" class="pp">${(l.f*100).toFixed(1)} %</text>`;}).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="분류별 비율">${segs.join('')}${lines}</svg>`;}
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" class="piesvg" role="img" aria-label="분류별 비율">${segs.join('')}${lines}</svg>`;}
 function donut(items,total){const r=58,C=2*Math.PI*r;let acc=0;const segs=items.map(it=>{const len=total?it.v/total*C:0;const s=`<circle r="${r}" cx="80" cy="80" fill="none" stroke="${it.c}" stroke-width="22" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-acc}"/>`;acc+=len;return s;}).join('');
   return `<svg width="160" height="160" viewBox="0 0 160 160" role="img" aria-label="분류별 비율"><g transform="rotate(-90 80 80)"><circle r="${r}" cx="80" cy="80" fill="none" stroke="var(--sunk)" stroke-width="22"/>${segs}</g><text x="80" y="76" text-anchor="middle" font-size="12" fill="var(--muted)">${S.statType==='exp'?'총 지출':'총 수입'}</text><text x="80" y="96" text-anchor="middle" font-size="17" font-weight="700" fill="var(--ink)">${compact(total)}원</text></svg>`;}
 

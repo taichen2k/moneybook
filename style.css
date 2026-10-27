@@ -431,3 +431,6 @@ textarea.in-t{min-height:130px;resize:vertical;font-size:14px}
 
 html.locked,html.locked body{overflow:hidden;overscroll-behavior:none;height:100%}
 .lock{touch-action:none;overscroll-behavior:none;user-select:none;-webkit-user-select:none}
+
+/* 당겨서 새로고침 막기 */
+html,body{overscroll-behavior-y:none}

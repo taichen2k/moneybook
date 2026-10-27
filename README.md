@@ -20,3 +20,6 @@
 
 ## 가족 계정 추가하는 법
 Firebase 콘솔 → Firestore Database → 규칙에서 `['taichen2k@gmail.com']` 목록에 가족 이메일을 쉼표로 추가하고 게시합니다.
+
+## 판 번호
+판을 올릴 때마다 숫자를 1씩 올립니다. `app.js`의 `APP_VERSION`, `index.html`의 `?v=`, `sw.js`의 `CACHE`를 같은 숫자로 맞춥니다. 앱 맨 아래에 `v숫자`로 표시됩니다.

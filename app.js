@@ -84,7 +84,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=13; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=14; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -575,7 +575,7 @@ const ACT={
  logout(){if(!S.ghOffAsk){S.ghOffAsk=true;renderSheet();return;}S.ghOffAsk=false;ACT.logoutNow();},
  async bkFile(){toast('백업 파일을 만드는 중이에요');try{const snap=await fullSnapshot();const n=Object.values(snap.tx).reduce((a,l)=>a+l.length,0);
   const url=URL.createObjectURL(new Blob([JSON.stringify(snap)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='티끌모아_'+stamp()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);toast('내역 '+n+'건을 백업 파일로 저장했어요');}catch(e){toast('백업 파일을 만들지 못했어요');}},
- async bkRestore(){if(!S.bkData)return;if(!S.bkAsk){S.bkAsk=true;renderSheet();return;}S.bkAsk=false;toast('넣는 중이에요. 화면을 닫지 마세요');try{const n=await restoreSnapshot(S.bkData,(d,t)=>{S.bkInfo=`넣는 중… ${d} / ${t}`;if(S.sheet==='sync')renderSheet();});S.bkData=null;S.bkInfo='';toast(n+'건을 넣었어요');closeSheet();ensureMonths(allMonths(),true);}catch(e){toast('되돌리지 못했어요');}},
+ async bkRestore(){if(!S.bkData)return;if(!S.bkAsk){S.bkAsk=true;renderSheet();return;}S.bkAsk=false;toast('넣는 중이에요. 화면을 닫지 마세요');try{const p=await restoreSnapshot(S.bkData,(d,t)=>{S.bkInfo=`넣는 중… ${d} / ${t}`;if(S.sheet==='sync')renderSheet();});const n=p.add+p.same;S.bkData=null;S.bkInfo='';toast(`새로 ${p.add}건 추가, ${p.same}건 확인, 중복 ${p.dup}건 건너뜀`);closeSheet();ensureMonths(allMonths(),true);}catch(e){toast('되돌리지 못했어요');}},
  fTab(el){S.fTab=el.dataset.k;renderSheet();},
  fReset(){S.filter={inc:[],exp:[],acc:[]};render();if(S.sheet==='filter')renderSheet();},
  favEditT(){S.favEdit=!S.favEdit;renderSheet();},
@@ -681,8 +681,11 @@ document.addEventListener('change',e=>{const t=e.target;
     else{const set=new Set(F[g]);if(t.checked)set.add(t.value);else set.delete(t.value);F[g]=[...set];}
     S.filter=F;render();return;}
   if(t.id==='f-date'&&S.form){readForm();S.form.date=t.value||S.form.date;renderSheet();return;}
-  if(t.id==='bk-in'&&t.files&&t.files[0]){const fr=new FileReader();fr.onload=()=>{try{const j=JSON.parse(fr.result);if(j.app!=='moneybook'&&!j.tx)throw 0;const n=Object.values(j.tx||{}).reduce((a,l)=>a+l.length,0);
-      S.bkData=j;S.bkInfo=j.merge?`${j.source||'가져오기'} 파일 · 내역 ${n}건. 넣으면 지금 장부에 더해지고, 계좌·분류는 합쳐져요. 같은 파일을 두 번 넣어도 겹치지 않아요.`:`${String(j.at||'').slice(0,10)} 백업 · 내역 ${n}건. 되돌리면 이 파일의 내역·설정이 다시 써지고, 그 뒤 새로 적은 내역은 그대로 남아요.`;}catch(e){S.bkData=null;S.bkInfo='티끌모아 백업 파일이 아니에요.';}S.bkAsk=false;renderSheet();};fr.readAsText(t.files[0]);return;}
+  if(t.id==='bk-in'&&t.files&&t.files[0]){const fr=new FileReader();fr.onload=async()=>{let j;try{j=JSON.parse(fr.result);if(j.app!=='moneybook'&&!j.tx)throw 0;}catch(e){S.bkData=null;S.bkInfo='티끌모아 백업 파일이 아니에요.';renderSheet();return;}
+      S.bkData=null;S.bkInfo='지금 장부와 비교하는 중…';renderSheet();
+      try{const plan=await analyzeSnapshot(j);j._plan=plan;S.bkData=j;const n=Object.values(j.tx||{}).reduce((a,l)=>a+l.length,0);
+        S.bkInfo=`${j.merge?(j.source||'가져오기')+' 파일':String(j.at||'').slice(0,10)+' 백업'} · 내역 ${n}건\n새로 추가 ${plan.add}건 · 이미 있음 ${plan.same}건(그대로 하나만 남음) · 중복이라 건너뜀 ${plan.dup}건\n${j.merge?'계좌·분류는 지금 것과 합쳐요.':'설정은 백업 때 것으로 돌아가고, 그 뒤에 만든 계좌·분류는 그대로 남아요.'} 백업 뒤에 새로 적은 내역은 지워지지 않아요.`;}
+      catch(e){S.bkData=null;S.bkInfo='비교하지 못했어요. 인터넷 연결을 확인해 주세요.';}S.bkAsk=false;renderSheet();};fr.readAsText(t.files[0]);t.value='';return;}
   if(t.id==='lockMin'){saveSettings({lockMin:+t.value});return;}
   if(t.id==='smode'){S.sp=t.value;S.statCat='';if(S.sp==='week')S.spWeek=today();if(S.sp==='year')S.spYear=+S.label.slice(0,4);if(S.sp==='range'){const p=period(S.label);S.rFrom=p.start;S.rTo=p.last;}render();return;}
   if(t.id==='sp-from'||t.id==='sp-to'){if(t.value){if(t.id==='sp-from')S.rFrom=t.value;else S.rTo=t.value;}render();return;}if(t.dataset.sms&&S.sms){S.sms.items[+t.dataset.i][t.dataset.sms]=t.value;}});
@@ -705,7 +708,15 @@ function deniedHtml(){return `<div class="card setup"><h3>들어올 수 없는 �
   <button class="btn pri wide2" data-act="logoutNow">다른 계정으로 로그인</button></div>`;}
 async function fullSnapshot(){const ms=allMonths();await ensureMonths(ms,true);const snap={app:'moneybook',v:1,at:new Date().toISOString(),settings:S.settings,tx:{},memo:[]};
   ms.forEach(ym=>{snap.tx[ym]=txOf(ym);});try{const m=await S.db.collection('memo').get();snap.memo=m.docs.map(x=>Object.assign({ym:x.id},x.data()));}catch(e){}return snap;}
-async function restoreSnapshot(snap,onProg){const fs=S.fs;const base='books/'+BOOK+'/';
+// 파일 내역과 지금 장부를 비교: 같은 번호는 '이미 있음'(덮어써도 하나), 번호는 다르지만 날짜·금액·자산·내용이 같으면 '중복'으로 건너뜀
+const txKey=t=>[t.type,t.date,t.amount,t.acc||'',t.to||'',(t.memo||'').trim()].join('|');
+async function analyzeSnapshot(snap){await ensureMonths(allMonths(),true);const fileIds=new Set();Object.values(snap.tx||{}).forEach(l=>l.forEach(t=>fileIds.add(t.id)));
+  const curIds=new Set();const cnt={};for(const ym of allMonths())for(const t of txOf(ym)){curIds.add(t.id);if(!fileIds.has(t.id)){const k=txKey(t);cnt[k]=(cnt[k]||0)+1;}}
+  const write={};let add=0,same=0,dup=0;
+  for(const ym in (snap.tx||{}))for(const t of snap.tx[ym]){if(curIds.has(t.id)){same++;(write[ym]=write[ym]||[]).push(t);continue;}
+    const k=txKey(t);if(cnt[k]>0){cnt[k]--;dup++;continue;}add++;(write[ym]=write[ym]||[]).push(t);}
+  return {add,same,dup,write};}
+async function restoreSnapshot(snap,onProg){const fs=S.fs;const base='books/'+BOOK+'/';const plan=snap._plan||await analyzeSnapshot(snap);snap=Object.assign({},snap,{tx:plan.write});
   // 설정: 합치기 모드면 계좌·분류·월 목록을 지금 설정과 합치고, 아니면 파일 설정으로 바꿔요
   let st=snap.settings||null;
   if(snap.merge){const cur=clone(S.settings);const used=new Set();Object.values(snap.tx||{}).forEach(l=>l.forEach(t=>{used.add(t.acc);if(t.to)used.add(t.to);}));
@@ -715,12 +726,14 @@ async function restoreSnapshot(snap,onProg){const fs=S.fs;const base='books/'+BO
     const cats=clone(cur.cats||DEFAULTS.cats);for(const ty of ['exp','inc'])for(const c of ((snap.merge.cats||{})[ty]||[]))if(!cats[ty].includes(c))cats[ty].push(c);
     const months=Object.assign({},cur.months||{});Object.keys(snap.tx||{}).forEach(ym=>months[ym]=true);
     st=Object.assign(cur,{accounts:accs,cats,months});}
-  else if(st){st=Object.assign({},st,{months:Object.assign({},st.months||{},Object.fromEntries(Object.keys(snap.tx||{}).map(ym=>[ym,true])))});}
+  else if(st){const cur=clone(S.settings);const accs=(st.accounts||[]).slice();for(const a of (cur.accounts||[]))if(!accs.some(x=>x.id===a.id))accs.push(a);
+    const cats=clone(st.cats||DEFAULTS.cats);for(const ty of ['exp','inc'])for(const c of ((cur.cats||{})[ty]||[]))if(!cats[ty].includes(c))cats[ty].push(c);
+    st=Object.assign({},st,{accounts:accs,cats,months:Object.assign({},cur.months||{},st.months||{},Object.fromEntries(Object.keys(snap.tx||{}).map(ym=>[ym,true])))});}
   const ops=[];if(st)ops.push([fs.doc(base+'ledger/settings'),JSON.parse(JSON.stringify(st))]);
   for(const ym in (snap.tx||{}))for(const t of snap.tx[ym]){const b=Object.assign({},t);delete b.id;ops.push([fs.collection(base+'tx_'+ym).doc(t.id),JSON.parse(JSON.stringify(b))]);}
   for(const m of (snap.memo||[])){const b=Object.assign({},m);delete b.ym;ops.push([fs.doc(base+'memo/'+m.ym),b]);}
   let done=0;for(let i=0;i<ops.length;i+=400){const bt=fs.batch();ops.slice(i,i+400).forEach(([r,d])=>bt.set(r,d));await bt.commit();done=Math.min(ops.length,i+400);if(onProg)onProg(done,ops.length);}
-  return Object.values(snap.tx||{}).reduce((a,l)=>a+l.length,0);}
+  return plan;}
 function startDb(){S.needSetup=false;S.db=makeFbDb(S.fs);let firstMs=null;
   S.db.doc('ledger/settings').onSnapshot(snap=>{const d=snap.exists?snap.data():{};S.settings=Object.assign(clone(DEFAULTS),clone(d));GH.denied=false;
     if(firstMs===null){firstMs=S.settings.monthStart;S.label=curLabel();subscribePeriod();}

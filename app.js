@@ -203,7 +203,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=51; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=52; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -683,7 +683,7 @@ const SHEETS={
   return head('삭제')+`<div class="alist">${accGrouped(a=>`<div class="ali"><button class="minus" data-act="aDel" data-k="${esc(a.id)}" aria-label="${esc(a.name)} 삭제">−</button><span>${esc(a.name)}</span>${ask===a.id?`<button class="btn danger sm" data-act="aDelOk" data-k="${esc(a.id)}">삭제</button>`:''}</div>${ask===a.id?`<div class="adwarn">${cnt?`이 자산으로 적은 내역 ${cnt}건은 그대로 남아요. 삭제한 자산은 설정관리 › 삭제된 자산에서 되살릴 수 있어요.`:'이 자산으로 적은 내역이 없어요.'}</div>`:''}`)}</div>`;},
  accOrder(){const sel=S.accSel;return head('순서 변경',`<span class="ordbtn"><button class="x" data-act="aMove" data-k="-1" aria-label="위로" ${sel?'':'disabled'}>▲</button><button class="x" data-act="aMove" data-k="1" aria-label="아래로" ${sel?'':'disabled'}>▼</button></span>`)+`<p class="muted" style="margin:0 0 10px;font-size:14px">옮길 자산을 누르고 ▲▼로 움직여요. 같은 그룹 안에서 움직여요.</p><div class="alist">${accGrouped(a=>`<button class="ali ${sel===a.id?'sel':''}" data-act="aSel" data-k="${esc(a.id)}"><span>${esc(a.name)}</span>${sel===a.id?'<i class="chk">✓</i>':''}</button>`)}</div>`;},
  tx(){const f=S.form;const edit=!!f.orig;const val=calc(f.amountStr);const ops=/[+\-*/×÷−]/.test(f.amountStr.replace(/^-/,''));
-  const [yy,mm,dd]=f.date.split('-');const dl=esc(`${String(yy).slice(2)}. ${mm}. ${dd}. (${DOW[dowOf(f.date)]||''})`);
+  const [yy,mm,dd]=f.date.split('-');const dl=esc(`${yy}. ${mm}. ${dd} (${DOW[dowOf(f.date)]||''})`);
   const catTxt=f.cat?esc(f.cat)+(f.sub?' <span class="muted">› '+esc(f.sub)+'</span>':''):'';
   const frow=(lab,k,txt)=>`<div class="frow ${f.panel===k?'act':''}"><span class="fl">${lab}</span><button class="fv" data-act="panel" data-k="${k}">${txt||'<span class="ph">선택</span>'}</button></div>`;
   let h=`<div class="txb t-${okType(f.type)}"><div class="txh"><button class="x" data-act="close" aria-label="닫기">←</button><h2>${edit?'내역 수정':TYPE_NAME[f.type]}</h2>
@@ -1199,7 +1199,7 @@ const ACT={
 const FAST=new Set(['pinKey','kp','sugPick','sugClose','sugOffAll']);
 // 숫자 키는 닿는 순간 입력돼요. 그 손가락을 뗄 때 생기는 클릭이 다른 버튼에 떨어지지 않게 잠깐 막아요
 // 날짜·시간 칸을 누르면 휴대폰 달력 창을 확실히 띄워요(일부 폰에서 투명한 날짜 칸이 안 열리는 문제 대비)
-document.addEventListener('click',e=>{const t=e.target;if(t&&t.matches&&t.matches('input[type=date],input[type=time],input[type=month]')&&typeof t.showPicker==='function'&&!matchMedia('(pointer:fine)').matches&&!t.classList.contains('typable')){try{t.showPicker();}catch(x){}}},true);
+document.addEventListener('click',e=>{const t=e.target;if(t&&t.matches&&t.matches('input[type=date],input[type=time],input[type=month]')&&typeof t.showPicker==='function'){try{t.showPicker();}catch(x){}}},true);
 let downOnOv=null;document.addEventListener('pointerdown',e=>{downOnOv=e.target&&e.target.classList&&e.target.classList.contains('ov')?e.target:null;},true);
 let ghostUntil=0;document.addEventListener('click',e=>{if(Date.now()<ghostUntil&&!(e.target.closest&&e.target.closest('[data-act]')&&FAST.has(e.target.closest('[data-act]').dataset.act))){e.preventDefault();e.stopImmediatePropagation();}},true);
 document.addEventListener('pointerdown',e=>{if(e.button>0)return;const el=e.target.closest('[data-act]');if(!el||!FAST.has(el.dataset.act))return;e.preventDefault();ghostUntil=Date.now()+350;
@@ -1225,7 +1225,7 @@ document.addEventListener('change',e=>{const t=e.target;
     if(g==='all'){const keys=tab==='acc'?S.settings.accounts.map(a=>a.id):(S.settings.cats[tab]||[]);F[tab]=t.checked?keys.slice():[];}
     else{const set=new Set(F[g]);if(t.checked)set.add(t.value);else set.delete(t.value);F[g]=[...set];}
     S.filter=F;render();return;}
-  if(t.id==='f-date'&&S.form){readForm();S.form.date=okDate(t.value)?t.value:S.form.date;if(!matchMedia('(pointer:fine)').matches)renderSheet();return;}// PC에서 날짜를 치는 동안 화면을 다시 그리면 입력이 끊겨서 그리지 않아요
+  if(t.id==='f-date'&&S.form){readForm();S.form.date=okDate(t.value)?t.value:S.form.date;renderSheet();return;}// PC에서 날짜를 치는 동안 화면을 다시 그리면 입력이 끊겨서 그리지 않아요
   if(t.id==='xl-in'&&t.files&&t.files[0]){const file=t.files[0];t.value='';S.bkData=null;S.bkAsk=false;S.xlInfo='엑셀을 읽는 중이에요…';renderSheet();
     (async()=>{try{const X=await loadXLSX();const buf=await file.arrayBuffer();const snap=xlsToSnap(X,buf);const n=Object.values(snap.tx).reduce((a,l)=>a+l.length,0);if(!n)throw new Error('empty');
       const j=cleanSnap(snap);const plan=await analyzeSnapshot(j);j._plan=plan;S.bkData=j;

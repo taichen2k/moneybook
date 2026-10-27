@@ -708,11 +708,7 @@ button.acc:active{background:var(--sunk)}
 /* v49: 금액 글자 크기 줄임, PC에서는 날짜 칸을 눌러 바로 숫자로 입력 */
 .amtv,.txb .amtv{font-size:17px;font-weight:700}
 .amtv small{font-size:14px}
-@media (pointer:fine){
-  .fv.date>span{display:none}
-  .fv.date input{position:static;opacity:1;width:100%;height:auto;border:0;background:none;font:inherit;font-size:17px;color:var(--ink);padding:0;cursor:text}
-  .fv.date input::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.6}
-}
+
 /* v50: 자동 완성은 '내용' 바로 아래 한 줄(가로로 넘김)로, 메모 칸을 가리지 않게 */
 
 .sug{position:static;grid-column:1/-1;display:flex;gap:6px;overflow-x:auto;max-height:none;border:0;box-shadow:none;background:none;padding:6px 0 2px;scrollbar-width:none}

@@ -769,7 +769,7 @@ document.addEventListener('touchmove',e=>{if(lockOn())e.preventDefault();},{pass
 // 새 판이 올라오면 저절로 바꿔요: 앱을 다시 볼 때·30분마다 확인하고, 입력 창이 열려 있지 않을 때만 새로 불러요
 let updAt=0;async function checkUpdate(){if(Date.now()-updAt<60000||!navigator.onLine)return;updAt=Date.now();
   try{const t=await fetch('./sw.js?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'');const m=t.match(/moneybook-v(\d+)/);
-    if(m&&+m[1]>APP_VERSION&&!S.sheet&&!S.form){try{if(sessionStorage.getItem('moneybook.updTo')===m[1])return;sessionStorage.setItem('moneybook.updTo',m[1]);}catch(e){}try{const r=await navigator.serviceWorker.getRegistration();if(r)await r.update();}catch(e){}if(!lockOn())markActive();location.reload();}}catch(e){}}
+    if(m&&+m[1]>APP_VERSION&&!S.sheet){try{if(sessionStorage.getItem('moneybook.updTo')===m[1])return;sessionStorage.setItem('moneybook.updTo',m[1]);}catch(e){}try{const r=await navigator.serviceWorker.getRegistration();if(r)await r.update();}catch(e){}if(!lockOn())markActive();location.reload();}}catch(e){}}
 setInterval(checkUpdate,30*60000);
 document.addEventListener('visibilitychange',()=>{if(document.hidden){S.hiddenAt=Date.now();if(S.settings.pin)document.documentElement.classList.add('veil');if(!lockOn())markActive();return;}
   document.documentElement.classList.remove('veil');checkUpdate();

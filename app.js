@@ -84,7 +84,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=9; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=10; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -547,7 +547,7 @@ const ACT={
   try{Object.keys(localStorage).filter(k=>k.startsWith('moneybook.f.')).forEach(k=>localStorage.removeItem(k));}catch(e){}location.reload();},
  logout(){if(!S.ghOffAsk){S.ghOffAsk=true;renderSheet();return;}S.ghOffAsk=false;ACT.logoutNow();},
  async bkFile(){toast('백업 파일을 만드는 중이에요');try{const snap=await fullSnapshot();const n=Object.values(snap.tx).reduce((a,l)=>a+l.length,0);
-  const url=URL.createObjectURL(new Blob([JSON.stringify(snap)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='티끌모아_백업_'+today()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);toast('내역 '+n+'건을 백업 파일로 저장했어요');}catch(e){toast('백업 파일을 만들지 못했어요');}},
+  const url=URL.createObjectURL(new Blob([JSON.stringify(snap)],{type:'application/json'}));const a=document.createElement('a');a.href=url;const nw=new Date();a.download='티끌모아_'+nw.getFullYear()+pad(nw.getMonth()+1)+pad(nw.getDate())+'_'+pad(nw.getHours())+pad(nw.getMinutes())+pad(nw.getSeconds())+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);toast('내역 '+n+'건을 백업 파일로 저장했어요');}catch(e){toast('백업 파일을 만들지 못했어요');}},
  async bkRestore(){if(!S.bkData)return;if(!S.bkAsk){S.bkAsk=true;renderSheet();return;}S.bkAsk=false;toast('넣는 중이에요. 화면을 닫지 마세요');try{const n=await restoreSnapshot(S.bkData,(d,t)=>{S.bkInfo=`넣는 중… ${d} / ${t}`;if(S.sheet==='sync')renderSheet();});S.bkData=null;S.bkInfo='';toast(n+'건을 넣었어요');closeSheet();ensureMonths(allMonths(),true);}catch(e){toast('되돌리지 못했어요');}},
  fTab(el){S.fTab=el.dataset.k;renderSheet();},
  fReset(){S.filter={inc:[],exp:[],acc:[]};render();if(S.sheet==='filter')renderSheet();},

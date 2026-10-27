@@ -625,3 +625,25 @@ button.acc:active{background:var(--sunk)}
 .ali.prow .pb{flex:none;width:108px;padding:8px}.ali.prow .perfin{width:110px}
 .ordbtn .x{font-size:15px}
 .ali>.gi2{flex:none}
+/* v35 */
+.rad{display:flex;align-items:center;gap:12px;padding:10px 4px;font-size:17px}
+.rad input{width:24px;height:24px;accent-color:var(--exp)}
+.instv{padding:16px 18px;font-size:22px;font-weight:600;border-bottom:1px solid var(--line)}
+.kpx{display:block;background:var(--sunk)}
+.tagrow{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 4px}
+.tagc{padding:8px 14px;border-radius:999px;background:var(--sunk);color:var(--muted);font-size:14.5px}
+.tagc.on{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.tagpick{display:flex;flex-wrap:wrap;gap:6px;padding:10px;border:1px solid var(--line);border-radius:12px;margin-bottom:6px}
+.tagnew{display:flex;gap:6px;flex:1 1 100%}.tagnew .in-t{flex:1}.tagnew .btn.sm{flex:none;padding:8px 14px}
+.btn.cont{flex:0 0 30%;background:var(--surface);border:1.5px solid var(--line)}
+.budinfo{display:flex;gap:12px;align-items:center;background:var(--bg);border-radius:12px;padding:14px;margin-bottom:12px;color:var(--muted);font-size:14.5px}
+.budinfo .bi{flex:none;width:44px;height:44px;border-radius:50%;border:1.5px solid var(--exp);color:var(--exp);display:flex;align-items:center;justify-content:center;font-size:20px}
+.ali>b.num{font-weight:600}
+.minus.ask{width:auto!important;padding:0 10px;border-radius:999px!important;font-size:13px!important}
+.swrow{grid-template-columns:1fr auto!important;border-bottom:1px solid var(--line)}
+.rsbox{border:1.5px solid var(--exp);margin-top:12px}
+.ovbig,.scbig{padding:6px 4px 14px}.ovbig small,.scbig small{display:block;font-size:14px}.ovbig b,.scbig b{font-size:30px;font-weight:700}
+.scsub{border-radius:var(--r);margin-bottom:12px}
+.scsub button{display:grid;grid-template-columns:1fr 60px auto;gap:10px;align-items:center;width:100%;padding:14px 16px;border-bottom:1px solid var(--line);text-align:left;color:var(--ink);font-size:16px}
+.scsub button.on{background:color-mix(in srgb,var(--exp) 10%,var(--surface))}
+.scsub b{font-weight:500}

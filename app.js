@@ -84,7 +84,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=8; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=9; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -445,7 +445,7 @@ install(){const ios=isIOS();const pc=isPC();return head('앱으로 설치')+`<di
   ${GH.err?`<div class="err">${esc(GH.err)}</div>`:''}<p class="muted">입력하면 다른 폰·PC에 바로 나타나요. 인터넷이 끊겨도 이 기기에 먼저 저장하고, 연결되면 자동으로 보내요.</p>
   <div class="card" style="background:var(--bg);margin-top:14px"><h3>백업 파일</h3><p class="muted" style="margin:0 0 8px">전체 장부를 파일 하나로 받아 보관하거나, 그 파일로 되돌릴 수 있어요. 한 달에 한 번쯤 받아두면 안심이에요.</p>
   <div class="acts" style="margin-top:6px"><button class="btn" data-act="bkFile">백업 파일 받기</button><label class="btn" for="bk-in" style="text-align:center;cursor:pointer">파일로 되돌리기</label></div><input type="file" id="bk-in" accept="application/json,.json" hidden>
-  ${S.bkInfo?`<p class="muted">${esc(S.bkInfo)}</p>${S.bkData?`<button class="btn danger ${S.bkAsk?'go':''} wide2" data-act="bkRestore">${S.bkAsk?'정말 되돌리기':'이 파일로 되돌리기'}</button>`:''}`:''}</div>
+  ${S.bkInfo?`<p class="muted">${esc(S.bkInfo)}</p>${S.bkData?`<button class="btn danger ${S.bkAsk?'go':''} wide2" data-act="bkRestore">${S.bkAsk?(S.bkData.merge?'정말 넣기':'정말 되돌리기'):(S.bkData.merge?'이 파일 내역 넣기':'이 파일로 되돌리기')}</button>`:''}`:''}</div>
   <div class="acts"><button class="btn danger ${S.ghOffAsk?'go':''}" data-act="logout">${S.ghOffAsk?'정말 로그아웃':'로그아웃'}</button></div>`;},
  monthStart(){const s=S.settings.monthStart||1;return head('월 시작일')+`<p style="margin:0;font-size:14px;color:var(--muted)">월급날에 맞춰 한 달을 계산하고 싶을 때 바꾸세요. 예를 들어 25일로 하면 ‘10월’은 10월 25일부터 11월 24일까지예요.</p>
   <div class="f"><label for="ms">매월</label><select class="in-t" id="ms">${Array.from({length:28},(_,i)=>`<option value="${i+1}" ${s===i+1?'selected':''}>${i+1}일부터</option>`).join('')}</select></div>
@@ -548,7 +548,7 @@ const ACT={
  logout(){if(!S.ghOffAsk){S.ghOffAsk=true;renderSheet();return;}S.ghOffAsk=false;ACT.logoutNow();},
  async bkFile(){toast('백업 파일을 만드는 중이에요');try{const snap=await fullSnapshot();const n=Object.values(snap.tx).reduce((a,l)=>a+l.length,0);
   const url=URL.createObjectURL(new Blob([JSON.stringify(snap)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='티끌모아_백업_'+today()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);toast('내역 '+n+'건을 백업 파일로 저장했어요');}catch(e){toast('백업 파일을 만들지 못했어요');}},
- async bkRestore(){if(!S.bkData)return;if(!S.bkAsk){S.bkAsk=true;renderSheet();return;}S.bkAsk=false;toast('되돌리는 중이에요');try{const n=await restoreSnapshot(S.bkData);S.bkData=null;S.bkInfo='';toast(n+'건을 백업 파일 상태로 되돌렸어요');closeSheet();}catch(e){toast('되돌리지 못했어요');}},
+ async bkRestore(){if(!S.bkData)return;if(!S.bkAsk){S.bkAsk=true;renderSheet();return;}S.bkAsk=false;toast('넣는 중이에요. 화면을 닫지 마세요');try{const n=await restoreSnapshot(S.bkData,(d,t)=>{S.bkInfo=`넣는 중… ${d} / ${t}`;if(S.sheet==='sync')renderSheet();});S.bkData=null;S.bkInfo='';toast(n+'건을 넣었어요');closeSheet();ensureMonths(allMonths(),true);}catch(e){toast('되돌리지 못했어요');}},
  fTab(el){S.fTab=el.dataset.k;renderSheet();},
  fReset(){S.filter={inc:[],exp:[],acc:[]};render();if(S.sheet==='filter')renderSheet();},
  favEditT(){S.favEdit=!S.favEdit;renderSheet();},
@@ -655,7 +655,7 @@ document.addEventListener('change',e=>{const t=e.target;
     S.filter=F;render();return;}
   if(t.id==='f-date'&&S.form){readForm();S.form.date=t.value||S.form.date;renderSheet();return;}
   if(t.id==='bk-in'&&t.files&&t.files[0]){const fr=new FileReader();fr.onload=()=>{try{const j=JSON.parse(fr.result);if(j.app!=='moneybook'&&!j.tx)throw 0;const n=Object.values(j.tx||{}).reduce((a,l)=>a+l.length,0);
-      S.bkData=j;S.bkInfo=`${String(j.at||'').slice(0,10)} 백업 · 내역 ${n}건. 되돌리면 이 파일의 내역·설정이 다시 써지고, 그 뒤 새로 적은 내역은 그대로 남아요.`;}catch(e){S.bkData=null;S.bkInfo='티끌모아 백업 파일이 아니에요.';}S.bkAsk=false;renderSheet();};fr.readAsText(t.files[0]);return;}
+      S.bkData=j;S.bkInfo=j.merge?`${j.source||'가져오기'} 파일 · 내역 ${n}건. 넣으면 지금 장부에 더해지고, 계좌·분류는 합쳐져요. 같은 파일을 두 번 넣어도 겹치지 않아요.`:`${String(j.at||'').slice(0,10)} 백업 · 내역 ${n}건. 되돌리면 이 파일의 내역·설정이 다시 써지고, 그 뒤 새로 적은 내역은 그대로 남아요.`;}catch(e){S.bkData=null;S.bkInfo='티끌모아 백업 파일이 아니에요.';}S.bkAsk=false;renderSheet();};fr.readAsText(t.files[0]);return;}
   if(t.id==='lockMin'){saveSettings({lockMin:+t.value});return;}
   if(t.id==='smode'){S.sp=t.value;S.statCat='';if(S.sp==='week')S.spWeek=today();if(S.sp==='year')S.spYear=+S.label.slice(0,4);if(S.sp==='range'){const p=period(S.label);S.rFrom=p.start;S.rTo=p.last;}render();return;}
   if(t.id==='sp-from'||t.id==='sp-to'){if(t.value){if(t.id==='sp-from')S.rFrom=t.value;else S.rTo=t.value;}render();return;}if(t.dataset.sms&&S.sms){S.sms.items[+t.dataset.i][t.dataset.sms]=t.value;}});
@@ -678,9 +678,22 @@ function deniedHtml(){return `<div class="card setup"><h3>들어올 수 없는 �
   <button class="btn pri wide2" data-act="logoutNow">다른 계정으로 로그인</button></div>`;}
 async function fullSnapshot(){const ms=allMonths();await ensureMonths(ms,true);const snap={app:'moneybook',v:1,at:new Date().toISOString(),settings:S.settings,tx:{},memo:[]};
   ms.forEach(ym=>{snap.tx[ym]=txOf(ym);});try{const m=await S.db.collection('memo').get();snap.memo=m.docs.map(x=>Object.assign({ym:x.id},x.data()));}catch(e){}return snap;}
-async function restoreSnapshot(snap){if(snap.settings)await S.db.doc('ledger/settings').set(snap.settings);let n=0;
-  for(const ym in (snap.tx||{}))for(const t of snap.tx[ym]){const b=Object.assign({},t);delete b.id;await S.db.collection('tx_'+ym).doc(t.id).set(b);n++;}
-  for(const m of (snap.memo||[])){const b=Object.assign({},m);delete b.ym;await S.db.doc('memo/'+m.ym).set(b);}return n;}
+async function restoreSnapshot(snap,onProg){const fs=S.fs;const base='books/'+BOOK+'/';
+  // 설정: 합치기 모드면 계좌·분류·월 목록을 지금 설정과 합치고, 아니면 파일 설정으로 바꿔요
+  let st=snap.settings||null;
+  if(snap.merge){const cur=clone(S.settings);const used=new Set();Object.values(snap.tx||{}).forEach(l=>l.forEach(t=>{used.add(t.acc);if(t.to)used.add(t.to);}));
+    const hasOld=Object.keys(cur.months||{}).length>0;
+    let accs=(cur.accounts||[]).filter(a=>hasOld||used.has(a.id)||!['bank','card'].includes(a.id));
+    for(const a of (snap.merge.accounts||[]))if(!accs.some(x=>x.id===a.id))accs.push(a);
+    const cats=clone(cur.cats||DEFAULTS.cats);for(const ty of ['exp','inc'])for(const c of ((snap.merge.cats||{})[ty]||[]))if(!cats[ty].includes(c))cats[ty].push(c);
+    const months=Object.assign({},cur.months||{});Object.keys(snap.tx||{}).forEach(ym=>months[ym]=true);
+    st=Object.assign(cur,{accounts:accs,cats,months});}
+  else if(st){st=Object.assign({},st,{months:Object.assign({},st.months||{},Object.fromEntries(Object.keys(snap.tx||{}).map(ym=>[ym,true])))});}
+  const ops=[];if(st)ops.push([fs.doc(base+'ledger/settings'),JSON.parse(JSON.stringify(st))]);
+  for(const ym in (snap.tx||{}))for(const t of snap.tx[ym]){const b=Object.assign({},t);delete b.id;ops.push([fs.collection(base+'tx_'+ym).doc(t.id),JSON.parse(JSON.stringify(b))]);}
+  for(const m of (snap.memo||[])){const b=Object.assign({},m);delete b.ym;ops.push([fs.doc(base+'memo/'+m.ym),b]);}
+  let done=0;for(let i=0;i<ops.length;i+=400){const bt=fs.batch();ops.slice(i,i+400).forEach(([r,d])=>bt.set(r,d));await bt.commit();done=Math.min(ops.length,i+400);if(onProg)onProg(done,ops.length);}
+  return Object.values(snap.tx||{}).reduce((a,l)=>a+l.length,0);}
 function startDb(){S.needSetup=false;S.db=makeFbDb(S.fs);let firstMs=null;
   S.db.doc('ledger/settings').onSnapshot(snap=>{const d=snap.exists?snap.data():{};S.settings=Object.assign(clone(DEFAULTS),clone(d));GH.denied=false;
     if(firstMs===null){firstMs=S.settings.monthStart;S.label=curLabel();subscribePeriod();}

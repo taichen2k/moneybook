@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>티끌모아</title>
+<meta name="description" content="여러 폰에서 같이 쓰는 내 가계부">
+<meta name="theme-color" content="#e9a23b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="티끌모아">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preload" href="fonts/PretendardVariable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="top" id="top"></header>
+  <main class="view" id="view"><div class="empty"><b>가계부를 여는 중이에요</b>잠시만 기다려 주세요.</div></main>
+</div>
+<button class="fab" id="fab" data-act="add" aria-label="새 내역 입력">+</button>
+<nav class="tabs" id="tabs"><div class="in"></div></nav>
+<div id="sheetRoot"></div>
+<div id="lockRoot"></div>
+<div class="toast" id="toast" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

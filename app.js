@@ -49,6 +49,8 @@ function updDraft(){const d=S.pinDraft;const box=document.querySelector('.pinbox
 const lockOn=()=>!!(S.locked&&(S.settings.pin||S.pinPending));
 function markActive(){try{sessionStorage.setItem('moneybook.activeAt',String(Date.now()));}catch(e){}}
 function recentlyActive(){try{const a=+sessionStorage.getItem('moneybook.activeAt')||0;const lm=+(localStorage.getItem('moneybook.lockMin')??1);return a&&Date.now()-a<Math.max(lm*60000,15000);}catch(e){return false;}}
+// 내용이 같으면 다시 그리지 않아요 (누르는 도중 버튼이 바뀌어 터치가 씹히는 문제 방지)
+function setHtml(el,h){if(el._h!==h){el.innerHTML=h;el._h=h;}}
 function renderLock(){const r=$('#lockRoot');const on=lockOn();document.documentElement.classList.toggle('locked',on);if(!on){r.innerHTML='';return;}
   if(r.querySelector('.lock')){updLock();return;}
   r.innerHTML=`<div class="lock" role="dialog" aria-label="비밀번호 입력"><img src="logo-mark.svg" alt="" width="72" height="72" style="border-radius:18px;box-shadow:0 4px 14px rgba(0,0,0,.18)"><h2>티끌모아</h2><div>비밀번호 4자리를 입력하세요</div><div id="lockDots">${dotsHtml(S.pinIn.length,!!S.pinErr)}</div><div class="perr" id="lockErr">${esc(S.pinErr)}</div>${padHtml()}<button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div>`;}
@@ -119,7 +121,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=23; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=24; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -181,9 +183,9 @@ const HICON={sms:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="
   set:'<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>'};
 
 function render(){renderLock();
-  if(lockOn()){$('#top').innerHTML='';$('#view').innerHTML='';$('#tabs').hidden=true;$('#fab').hidden=true;if(S.sheet)closeSheet();return;}
+  if(lockOn()){setHtml($('#top'),'');$('#view').innerHTML='';$('#tabs').hidden=true;$('#fab').hidden=true;if(S.sheet)closeSheet();return;}
   $('#tabs').hidden=false;renderTop();renderView();if(S.sheet==='filter')renderSheet();
-  $('#tabs .in').innerHTML=TABS.map(([k,n])=>`<button data-act="tab" data-k="${k}" class="${S.tab===k?'on':''}" aria-label="${n}">${ICONS[k]}<span>${n}</span></button>`).join('');
+  setHtml($('#tabs .in'),TABS.map(([k,n])=>`<button data-act="tab" data-k="${k}" class="${S.tab===k?'on':''}" aria-label="${n}">${ICONS[k]}<span>${n}</span></button>`).join(''));
   $('#fab').hidden=!S.db||!S.canWrite||S.tab==='more'||(S.tab==='list'&&S.sub==='memo');}
 
 function sumRow(t){return `<div class="sum num"><div><span>수입</span><b class="inc">${won(t.inc)}</b></div><div><span>지출</span><b class="exp">${won(t.exp)}</b></div><div><span>합계</span><b>${t.net<0?'-':''}${won(Math.abs(t.net))}</b></div></div>`;}
@@ -194,7 +196,7 @@ function renderTop(){const top=$('#top');const sc=!S.db?'off':GH.err?'off':S.db.
     h+=`<div class="lhead"><div class="lnav"><button data-act="${yearMode?'yprev':'prev'}" aria-label="이전">‹</button><button class="mlab" data-act="mpOpen" data-k="${yearMode?'year':'month'}" aria-label="날짜 고르기">${yearMode?y+'년':y+'년 '+(+m)+'월'}<i>▾</i></button><button data-act="${yearMode?'ynext':'next'}" aria-label="다음">›</button></div>
       <div class="hic"><span class="sync ${sc}" title="${st}"><i></i></span><button data-act="open" data-k="sms" aria-label="문자 붙여넣기">${HICON.sms}</button><button data-act="open" data-k="favorites" aria-label="자주 쓰는 내역">${HICON.fav}</button><button data-act="open" data-k="search" aria-label="검색">${HICON.search}</button><button data-act="open" data-k="filter" aria-label="필터" class="${filterOn()?'fact':''}">${HICON.set}</button></div></div>
     <div class="subtabs">${SUBS.map(([k,n])=>`<button data-act="sub" data-k="${k}" class="${S.sub===k?'on':''}">${n}</button>`).join('')}</div>${sumRow(t)}`;
-    top.innerHTML=h;return;}
+    setHtml(top,h);return;}
   h=`<div class="brand"><h1><img src="logo-mark.svg" alt="" width="28" height="28">티끌모아</h1><span class="sync ${sc}"><i></i>${st}</span></div>`;
   if(S.tab==='stat'){const sp=statPeriod();const t=totals(txIn(sp));const modes=[['week','주간'],['month','월간'],['year','연간'],['range','기간']];
     let lab;if(S.sp==='month'){const [y,m]=S.label.split('-');lab=`<button class="mlab big" data-act="mpOpen" data-k="month">${y}년 ${+m}월<i>▾</i></button>`;}else if(S.sp==='year')lab=`<button class="mlab big" data-act="mpOpen" data-k="syear">${S.spYear||S.label.slice(0,4)}년<i>▾</i></button>`;
@@ -203,7 +205,7 @@ function renderTop(){const top=$('#top');const sc=!S.db?'off':GH.err?'off':S.db.
     h+=`<div class="month spn">${S.sp==='range'?'':'<button data-act="sprev" aria-label="이전">‹</button>'}<div class="m">${lab}</div>${S.sp==='range'?'':'<button data-act="snext" aria-label="다음">›</button>'}
       <select id="smode" class="mode" aria-label="통계 기간">${modes.map(([k,n])=>`<option value="${k}" ${S.sp===k?'selected':''}>${n}</option>`).join('')}</select></div>
     <div class="stabs num"><button data-act="stype" data-k="inc" class="${S.statType==='inc'?'on':''}">수입 <b>${won(t.inc)}원</b></button><button data-act="stype" data-k="exp" class="${S.statType==='exp'?'on':''}">지출 <b>${won(t.exp)}원</b></button></div>`;}
-  top.innerHTML=h;}
+  setHtml(top,h);}
 
 function rowHtml(t){const isT=t.type==='trf';const name=isT?'이체':(t.cat||'미분류')+(t.sub?' › '+t.sub:'');
   const acc=isT?`${esc(accName(t.acc))} → ${esc(accName(t.to))}`:esc(accName(t.acc))+(t.note?' · '+esc(t.note):'')+(t.auto?' · 반복':'');

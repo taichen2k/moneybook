@@ -484,3 +484,10 @@ input.fv{display:block}
 @media (max-width:400px){.lnav button{width:24px}.lnav .mlab{font-size:19px;padding:2px 2px;gap:2px}.hic button{width:31px}.hic svg{width:20px;height:20px}.lhead{gap:4px}}
 .tabs button,.subtabs button,.lnav button,.hic button,.fab{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .lock.bye{opacity:0;transition:opacity .3s ease}
+.grp-h.cc{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:end}
+.grp-h.cc .num{display:flex;flex-direction:column;align-items:flex-end;min-width:96px}
+.grp-h.cc small{font-size:12px}.grp-h.cc em{font-style:normal;font-size:15px;font-weight:600;color:var(--ink)}.grp-h.cc em.exp{color:var(--exp)}
+.acc.cc{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center}
+.acc.cc .c2,.acc.cc .c3{display:flex;flex-direction:column;align-items:flex-end;min-width:96px}
+.acc.cc .c2 small{font-size:12px;color:var(--muted);font-weight:400}.acc.cc .c2 small.inc{color:var(--inc)}
+.acc.cc b{font-weight:600}

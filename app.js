@@ -1,14 +1,14 @@
 (function(){
 "use strict";
 const COLORS=['#e4572e','#f0a202','#2a9d6f','#2e86ab','#a23b72','#6c5ce7','#d0813c','#5b8c2a','#c44569','#3d6fa5','#8d99ae','#b08968','#17a2b8','#9c6644'];
-const GROUPS=['현금','은행','카드','투자','대출','기타'];
+const GROUPS=['현금','은행','신용카드','체크카드','선불식카드','투자','대출','기타'];
 const DEFAULTS={v:1,monthStart:1,
   cats:{exp:['식비/생활용품','교통/차량','패션/미용/문화','주거/통신','건강','교육','경조사/회비','부모님','기타','보험','저축'],
         inc:['월급','부수입','용돈','상여','금융소득','기타']},
   subOn:true,
   subs:{exp:{'식비/생활용품':['식료품','간식','외식','음료'],'교통/차량':['대중교통','택시','주유','정비','렌트'],'패션/미용/문화':['의류','패션잡화','헤어/뷰티','세탁비'],
     '주거/통신':['관리비','공과금','통신비','월세'],'건강':['운동','다이어트','병원','약국'],'교육':['학비','학원비','교재비','육아'],'경조사/회비':['경조사비','회비','선물']},inc:{}},
-  accounts:[{id:'cash',name:'현금',group:'현금',init:0},{id:'bank',name:'주거래 통장',group:'은행',init:0},{id:'card',name:'신용카드',group:'카드',init:0}],
+  accounts:[{id:'cash',name:'현금',group:'현금',init:0},{id:'bank',name:'주거래 통장',group:'은행',init:0},{id:'card',name:'신용카드',group:'신용카드',init:0}],
   budget:{total:0,cats:{}},favorites:[],recurring:[],months:{},pin:null,lockMin:1};
 const TYPE_NAME={exp:'지출',inc:'수입',trf:'이체'};
 const DOW=['일','월','화','수','목','금','토'];
@@ -80,7 +80,7 @@ function normTx(t,ym){if(!t||typeof t!=='object')return null;const id=String(t.i
 function normalizeSettings(st){const d=clone(DEFAULTS);st=Object.assign(d,st||{});
   st.monthStart=Math.min(28,Math.max(1,parseInt(st.monthStart,10)||1));
   st.lockMin=[0,1,5,10,30].includes(Number(st.lockMin))?Number(st.lockMin):1;
-  st.accounts=(Array.isArray(st.accounts)?st.accounts:[]).filter(a=>a&&typeof a==='object'&&/^[\w-]{1,60}$/.test(String(a.id||''))).map(a=>({id:String(a.id),name:str(a.name,30)||'이름 없음',group:str(a.group,20)||'기타',init:isFinite(Number(a.init))?Number(a.init):0}));
+  st.accounts=(Array.isArray(st.accounts)?st.accounts:[]).filter(a=>a&&typeof a==='object'&&/^[\w-]{1,60}$/.test(String(a.id||''))).map(a=>({id:String(a.id),name:str(a.name,30)||'이름 없음',group:(g=>g==='카드'?'신용카드':GROUPS.includes(g)?g:'기타')(str(a.group,20)),init:isFinite(Number(a.init))?Number(a.init):0}));
   if(!st.accounts.length)st.accounts=clone(DEFAULTS.accounts||[]);
   const cats={};for(const ty of ['exp','inc']){const l=((st.cats||{})[ty]);cats[ty]=uniq((Array.isArray(l)?l:[]).filter(okName).map(x=>x.trim().slice(0,20)));if(!cats[ty].length)cats[ty]=clone(DEFAULTS.cats[ty]);}st.cats=cats;
   st.recurring=(Array.isArray(st.recurring)?st.recurring:[]).filter(r=>r&&typeof r==='object'&&isFinite(Number(r.amount))&&Number(r.amount)>0).map(r=>Object.assign({},r,{id:str(r.id,60)||newId(),type:okType(r.type),day:Math.min(31,Math.max(1,parseInt(r.day,10)||1)),amount:Number(r.amount),done:(Array.isArray(r.done)?r.done:[]).filter(okYm)}));
@@ -124,7 +124,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=25; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=26; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -268,15 +268,15 @@ function monthlyHtml(){const y=+S.label.slice(0,4);const labels=[];for(let m=12;
 
 function settleHtml(p){const prevP=period(shiftLabel(S.label,-1));const miss=prevP.months.filter(ym=>!S.live[ym]&&!S.cache[ym]);if(miss.length)ensureMonths(miss);
   const list=txIn(p);const t=totals(list);const pt=totals(txIn(prevP));const grp=id=>{const a=S.settings.accounts.find(x=>x.id===id);return a?a.group:'';};
-  const cb=list.filter(x=>x.type==='exp'&&(grp(x.acc)==='현금'||grp(x.acc)==='은행')).reduce((s,x)=>s+x.amount,0);
-  const cd=list.filter(x=>x.type==='exp'&&grp(x.acc)==='카드').reduce((s,x)=>s+x.amount,0);
+  const cb=list.filter(x=>x.type==='exp'&&grp(x.acc)!=='신용카드').reduce((s,x)=>s+x.amount,0);
+  const cd=list.filter(x=>x.type==='exp'&&grp(x.acc)==='신용카드').reduce((s,x)=>s+x.amount,0);
   const tr=list.filter(x=>x.type==='trf'&&(grp(x.acc)==='현금'||grp(x.acc)==='은행')).reduce((s,x)=>s+x.amount,0);
   const bt=(S.settings.budget||{}).total||0;const bc=(S.settings.budget||{}).cats||{};const byCat={};list.filter(x=>x.type==='exp').forEach(x=>byCat[x.cat]=(byCat[x.cat]||0)+x.amount);
   const bline=(n,used,b)=>{const r=used/b;return `<div class="bl"><div class="blh"><span>${esc(n)}</span><span class="num">${won(used)} / ${won(b)}</span></div><div class="bar ${r>1?'over':''}"><i style="width:${Math.min(100,r*100)}%"></i></div><small class="num">${r>1?'<span class="exp">'+won(used-b)+'원 초과</span>':won(b-used)+'원 남음'}</small></div>`;};
   let bud=bt||Object.keys(bc).length?(bt?bline('전체 예산',t.exp,bt):'')+Object.keys(bc).map(c=>bline(c,byCat[c]||0,bc[c])).join(''):'<p class="muted">예산을 정하면 여기서 얼마나 썼는지 확인할 수 있어요.</p>';
   return `<div class="card"><div class="ovh"><h3>예산</h3><button class="mini" data-act="open" data-k="budget">예산설정 ›</button></div>${bud}</div>
   <div class="card"><div class="ovh"><h3>자산</h3><span class="muted num">${dot2(p.start)} ~ ${dot2(p.last)}</span></div>
-  <div class="kv num"><div><span>전월대비 지출 (당월/전월)</span><b>${pt.exp?Math.round(t.exp/pt.exp*100)+'%':'-'}</b></div><div><span>지출 (현금, 은행)</span><b>${won(cb)}원</b></div><div><span>지출 (카드)</span><b>${won(cd)}원</b></div><div><span>이체 (현금, 은행 →)</span><b>${won(tr)}원</b></div></div></div>
+  <div class="kv num"><div><span>전월대비 지출 (당월/전월)</span><b>${pt.exp?Math.round(t.exp/pt.exp*100)+'%':'-'}</b></div><div><span>지출 (현금·통장·체크)</span><b>${won(cb)}원</b></div><div><span>지출 (신용카드)</span><b>${won(cd)}원</b></div><div><span>이체 (현금, 은행 →)</span><b>${won(tr)}원</b></div></div></div>
   <button class="btn wide" data-act="export" data-k="month">이번 달 엑셀 파일로 저장</button>`;}
 
 function memoHtml(){const ym=S.label;if(!S.memo||S.memo.ym!==ym){S.memo={ym,text:'',loaded:false,saved:''};const mm=S.memo;
@@ -321,14 +321,27 @@ function overviewHtml(){const labels=[];for(let i=5;i>=0;i--)labels.push(shiftLa
 function allMonths(){return Object.keys(S.settings.months||{}).sort();}
 function assetHtml(){const ms=allMonths();const pending=ms.some(ym=>!S.live[ym]&&!S.cache[ym]);
   if(pending){ensureMonths(ms);return '<div class="empty"><b>잔액을 계산하는 중이에요</b></div>';}
-  const bal={};S.settings.accounts.forEach(a=>bal[a.id]=Number(a.init)||0);
-  for(const ym of ms)for(const t of txOf(ym)){if(t.type==='inc'){if(t.acc in bal)bal[t.acc]+=t.amount;}else if(t.type==='exp'){if(t.acc in bal)bal[t.acc]-=t.amount;}else{if(t.acc in bal)bal[t.acc]-=t.amount;if(t.to in bal)bal[t.to]+=t.amount;}}
-  let pos=0,neg=0;Object.values(bal).forEach(v=>v>=0?pos+=v:neg+=v);
   if(S.overview)return `<button class="back" data-act="ovw" data-k="0">‹ 자산으로 돌아가기</button>`+overviewHtml();
-  let h=`<div class="card"><div class="net num"><div><span>자산</span><b class="inc">${won(pos)}</b></div><div><span>부채</span><b class="exp">${won(-neg)}</b></div><div><span>순자산</span><b>${sgn(pos+neg)}</b></div></div></div>`;
-  for(const g of GROUPS){const accs=S.settings.accounts.filter(a=>(a.group||'기타')===g);if(!accs.length)continue;const sum=accs.reduce((s,a)=>s+bal[a.id],0);
-    h+=`<div class="grp"><div class="grp-h"><span>${g}</span><span class="num">${sgn(sum)}</span></div><div class="rows" style="border-radius:var(--r)">${accs.map(a=>`<div class="acc"><span>${esc(a.name)}</span><b class="num ${bal[a.id]<0?'exp':''}">${won(bal[a.id])}</b></div>`).join('')}</div></div>`;}
-  h+=`<div class="menu"><button data-act="ovw" data-k="1"><span>전체 통계 보기</span><small>누적잔액 · 월별 추이 ›</small></button><button data-act="open" data-k="accounts"><span>계좌·카드 추가 및 수정</span><small>›</small></button></div><p style="font-size:12px;color:var(--muted);padding:0 4px">잔액 = 시작 잔액 + 수입 − 지출 ± 이체. 카드는 쓴 만큼 마이너스로 쌓이고, 카드값을 통장에서 ‘이체’로 넣으면 0으로 돌아와요.</p>`;
+  const accs=S.settings.accounts;const bal=Object.create(null);accs.forEach(a=>bal[a.id]=Number(a.init)||0);
+  for(const ym of ms)for(const t of txOf(ym)){if(t.type==='inc'){if(t.acc in bal)bal[t.acc]+=t.amount;}else if(t.type==='exp'){if(t.acc in bal)bal[t.acc]-=t.amount;}else{if(t.acc in bal)bal[t.acc]-=t.amount;if(t.to in bal)bal[t.to]+=t.amount;}}
+  // 이번 달·지난달 카드 사용액 (월 시작일 기준)
+  const cur=curLabel();const use=(lab)=>{const u=Object.create(null);for(const t of txIn(period(lab)))if(t.type==='exp')u[t.acc]=(u[t.acc]||0)+t.amount;return u;};
+  const u0=use(cur),u1=use(shiftLabel(cur,-1));
+  const card=Object.create(null);for(const a of accs)if(a.group==='신용카드'){const out=Math.max(0,-bal[a.id]);const mi=Math.min(u0[a.id]||0,out);const due=Math.min(u1[a.id]||0,out-mi);card[a.id]={mi,due,old:out-mi-due};}
+  // 위 합계: 체크카드는 통장에서 바로 빠지므로 빼고, 나머지는 잔액이 +면 자산, −면 부채
+  let pos=0,neg=0;for(const a of accs){if(a.group==='체크카드')continue;const v=bal[a.id];if(v>=0)pos+=v;else neg+=-v;}
+  const amt=v=>`<b class="num ${v<0?'exp':v>0?'inc':''}">${won(Math.abs(v))}원</b>`;
+  let h=`<div class="card"><div class="net num"><div><span>자산</span><b class="inc">${won(pos)}</b></div><div><span>부채</span><b class="exp">${won(neg)}</b></div><div><span>합계</span><b>${pos-neg<0?'-':''}${won(Math.abs(pos-neg))}</b></div></div></div>`;
+  const mlab=+cur.slice(5,7)+'월';
+  for(const g of GROUPS){const list=accs.filter(a=>(a.group||'기타')===g);if(!list.length)continue;
+    if(g==='신용카드'){const sDue=list.reduce((x,a)=>x+card[a.id].due+card[a.id].old,0),sMi=list.reduce((x,a)=>x+card[a.id].mi,0);
+      h+=`<div class="grp"><div class="grp-h cc"><span>신용카드</span><span class="num"><small>결제예정금액</small><em class="${sDue?'exp':''}">${won(sDue)}원</em></span><span class="num"><small>미결제금액</small><em class="${sMi?'exp':''}">${won(sMi)}원</em></span></div><div class="rows" style="border-radius:var(--r)">${list.map(a=>{const c=card[a.id];const over=bal[a.id]>0?bal[a.id]:0;
+        return `<div class="acc cc"><span>${esc(a.name)}</span><span class="num c2"><b class="${c.due?'exp':''}">${won(c.due)}원</b>${c.old?`<small>-${won(c.old)}원</small>`:over?`<small class="inc">+${won(over)}원</small>`:''}</span><span class="num c3"><b class="${c.mi?'exp':''}">${won(c.mi)}원</b></span></div>`;}).join('')}</div></div>`;continue;}
+    if(g==='체크카드'){const sum=list.reduce((x,a)=>x+(u0[a.id]||0),0);
+      h+=`<div class="grp"><div class="grp-h"><span>체크카드(${mlab})</span><span class="num ${sum?'exp':''}">${won(sum)}원</span></div><div class="rows" style="border-radius:var(--r)">${list.map(a=>`<div class="acc"><span>${esc(a.name)}</span><b class="num ${u0[a.id]?'exp':''}">${won(u0[a.id]||0)}원</b></div>`).join('')}</div></div>`;continue;}
+    const sum=list.reduce((x,a)=>x+bal[a.id],0);
+    h+=`<div class="grp"><div class="grp-h"><span>${g}</span><span class="num ${sum<0?'exp':sum>0?'inc':''}">${won(Math.abs(sum))}원</span></div><div class="rows" style="border-radius:var(--r)">${list.map(a=>`<div class="acc"><span>${esc(a.name)}</span>${amt(bal[a.id])}</div>`).join('')}</div></div>`;}
+  h+=`<div class="menu"><button data-act="ovw" data-k="1"><span>전체 통계 보기</span><small>누적잔액 · 월별 추이 ›</small></button><button data-act="open" data-k="accounts"><span>계좌·카드 추가 및 수정</span><small>›</small></button></div><p style="font-size:12px;color:var(--muted);padding:0 4px;line-height:1.6">빨간 숫자는 쓴 돈이 들어온 돈보다 많은 금액(부채)이에요. 신용카드: 미결제금액 = 이번 달(${mlab}) 사용액, 결제예정금액 = 지난달 사용액, 아래 회색 = 그 전부터 남은 금액. 카드값을 통장에서 ‘이체’로 넣으면 줄어들어요. 체크카드는 이번 달 사용액만 보여주고 합계에는 넣지 않아요.</p>`;
   return h;}
 
 function moreHtml(){const st=S.settings;const bt=st.budget&&st.budget.total;
@@ -365,7 +378,7 @@ function head(t,extra){return `<div class="sh-h"><h2>${t}</h2>${extra||''}<butto
 function accOptions(sel){return GROUPS.map(g=>{const a=S.settings.accounts.filter(x=>(x.group||'기타')===g);return a.length?`<optgroup label="${g}">${a.map(x=>`<option value="${esc(x.id)}" ${x.id===sel?'selected':''}>${esc(x.name)}</option>`).join('')}</optgroup>`:'';}).join('');}
 function catOptions(type,sel){return (S.settings.cats[type]||[]).map(c=>`<option ${c===sel?'selected':''}>${esc(c)}</option>`).join('');}
 
-function lastAcc(){try{const a=localStorage.getItem('moneybook.acc');if(a&&S.settings.accounts.some(x=>x.id===a))return a;}catch(e){}const c=S.settings.accounts.find(a=>a.group==='카드');return (c||S.settings.accounts[0]||{}).id||'';}
+function lastAcc(){try{const a=localStorage.getItem('moneybook.acc');if(a&&S.settings.accounts.some(x=>x.id===a))return a;}catch(e){}const c=S.settings.accounts.find(a=>a.group==='신용카드');return (c||S.settings.accounts[0]||{}).id||'';}
 function defaultDate(){if(S.tab==='list'&&S.sub==='cal'&&S.selDay)return S.selDay;const p=period(S.label);const t=today();return (t>=p.start&&t<p.end)?t:p.start;}
 function openTx(t){if(t){S.form=Object.assign({},t,{amountStr:String(t.amount),orig:t.id?{id:t.id,ym:t.date.slice(0,7)}:null,panel:''});}
   else S.form={type:'exp',amountStr:'',date:defaultDate(),cat:'',sub:'',acc:lastAcc(),to:'',memo:'',time:'',fav:false,panel:'amt',rep:'',inst:0,calcOn:false};
@@ -718,7 +731,7 @@ const ACT={
  catDel(el){const i=+el.dataset.i;if(S.catDelAsk!==i){S.catDelAsk=i;renderSheet();return;}S.catDelAsk=-1;S.catEdit=-1;const t=S.catType;const l=S.settings.cats[t].slice();if(l.length<=1){toast('분류는 하나 이상 있어야 해요');return;}l.splice(i,1);saveSettings({cats:Object.assign({},S.settings.cats,{[t]:l})});renderSheet();},
  catAdd(){const el=document.getElementById('c-new');const v=(el.value||'').trim();const t=S.catType;if(!v)return;if(BADK.has(v)){toast('쓸 수 없는 이름이에요');return;}if(S.settings.cats[t].includes(v)){toast('이미 있는 분류예요');return;}
   saveSettings({cats:Object.assign({},S.settings.cats,{[t]:S.settings.cats[t].concat(v.slice(0,20))})});renderSheet();},
- accAdd(){readAcc();S.accDraft.push({id:newId(),name:'',group:'카드',init:0});renderSheet();const els=document.querySelectorAll('[data-acc="name"]');if(els.length)els[els.length-1].focus();},
+ accAdd(){readAcc();S.accDraft.push({id:newId(),name:'',group:'신용카드',init:0});renderSheet();const els=document.querySelectorAll('[data-acc="name"]');if(els.length)els[els.length-1].focus();},
  accDel(el){readAcc();if(S.accDraft.length<=1){toast('자산은 하나 이상 있어야 해요');return;}S.accDraft.splice(+el.dataset.i,1);renderSheet();},
  saveAcc(){readAcc();const list=S.accDraft.filter(a=>a.name.trim()).map(a=>({id:a.id||newId(),name:a.name.trim().slice(0,30),group:a.group||'기타',init:Number(a.init)||0}));
   if(!list.length){toast('이름을 하나 이상 적어주세요');return;}saveSettings({accounts:list});toast('저장했어요');closeSheet();},

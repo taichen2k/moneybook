@@ -203,7 +203,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=47; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=48; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -598,7 +598,7 @@ function defaultDate(){if(S.tab==='list'&&S.sub==='cal'&&S.selDay)return S.selDa
 const nowHM=()=>{const n=new Date();return pad(n.getHours())+':'+pad(n.getMinutes());};
 function openTx(t){if(t){S.form=Object.assign({},t,{tags:Array.isArray(t.tags)?t.tags.slice():[],tagPick:false,amountStr:String(t.amount),orig:t.id?{id:t.id,ym:t.date.slice(0,7)}:null,panel:''});}
   else S.form={type:'exp',amountStr:'',date:defaultDate(),cat:'',sub:'',acc:lastAcc(),to:'',memo:'',time:(S.settings.timeMode||'').startsWith('on')?nowHM():'',fav:false,panel:S.settings.inputOrder==='cat'?'cat':'amt',rep:'',inst:0,calcOn:false};
-  S.form.confirmDel=false;S.form.err='';S.form.subPick=false;openSheet('tx');if(S.settings.autoFill)ensureMonths(allMonths().slice().sort().slice(-12));}
+  S.sugOff=false;S.form.confirmDel=false;S.form.err='';S.form.subPick=false;openSheet('tx');if(S.settings.autoFill)ensureMonths(allMonths().slice().sort().slice(-12));}
 
 function fmtExpr(s){return esc(String(s).replace(/,/g,'').replace(/\d+/g,m=>won(Number(m))).replace(/\*/g,'×').replace(/\//g,'÷').replace(/-/g,'−'));}
 function addMonths(s,i){const [y,m,d]=s.split('-').map(Number);const b=new Date(y,m-1+i,1);const ym=b.getFullYear()+'-'+pad(b.getMonth()+1);return ym+'-'+pad(Math.min(d,daysIn(ym)));}
@@ -918,13 +918,14 @@ const ACT={
  pickDay(el){S.selDay=S.selDay===el.dataset.d?'':el.dataset.d;render();},
  stype(el){S.statType=el.dataset.k;render();},
  close(){closeSheet();},
- ovClose(el,e){if(e.target===el)closeSheet();},
+ ovClose(el,e){if(e.target===el&&downOnOv===el)closeSheet();},
  ftype(el){readForm();const f=S.form;f.type=el.dataset.k;f.sub='';f.subPick=false;if(f.panel==='cat'&&f.type==='trf')f.panel='acc';if(f.type!=='trf'&&!(S.settings.cats[f.type]||[]).includes(f.cat))f.cat='';renderSheet();},
  fcat(el){readForm();if(S.form.cat!==el.dataset.k)S.form.sub='';S.form.cat=el.dataset.k;renderSheet();},
  panel(el){readForm();const k=el.dataset.k;const f=S.form;f.panel=(f.panel===k||!k)?'':k;f.subPick=false;if(document.activeElement)document.activeElement.blur();renderSheet();},
  tagPick(){readForm();S.form.tagPick=!S.form.tagPick;S.form.panel='';renderSheet();},
  tagTog(el){readForm();const f=S.form;const g=el.dataset.k;const l=f.tags||[];f.tags=l.includes(g)?l.filter(x=>x!==g):l.concat(g);renderSheet();},
  tagNewF(){readForm();const v=((document.getElementById('f-tagnew')||{}).value||'').trim().replace(/^#/,'').slice(0,20);if(!v||BADK.has(v))return;const f=S.form;if(!(f.tags||[]).includes(v))f.tags=(f.tags||[]).concat(v);if(!(S.settings.tags||[]).includes(v))saveSettings({tags:(S.settings.tags||[]).concat(v)});renderSheet();},
+ sugClose(){const b=document.getElementById('f-sug');if(b){b.hidden=true;b.innerHTML='';}S.sugOff=true;},
  sugPick(el){const t=(S._sug||[])[+el.dataset.i];if(!t||!S.form)return;readForm();const f=S.form;f.memo=t.memo;if(t.type==='trf'){f.acc=t.acc;f.to=t.to;}else{f.cat=t.cat||'';f.sub=t.sub||'';if(t.acc&&S.settings.accounts.some(a=>a.id===t.acc))f.acc=t.acc;}if(!f.amountStr)f.amountStr=String(t.amount);if(!f.note&&t.note)f.note=t.note;f.panel='';renderSheet();},
  memoFocus(){if(S.form&&S.form.panel){readForm();S.form.panel='';renderSheet();const m=document.getElementById('f-memo');if(m){m.focus();m.setSelectionRange(m.value.length,m.value.length);}}},
  kp(el){const f=S.form;const k=el.dataset.k;const tk=f.panel==='fee'?'feeStr':'amountStr';let a=f[tk]||'';
@@ -1193,26 +1194,29 @@ const ACT={
     else if(d.cur===d.first){const salt=newId();const hash=await hashPin(d.cur,salt);saveSettings({pin:{salt,hash}});S.unlockedOnce=true;markActive();S.pinDraft=null;toast('비밀번호를 설정했어요');closeSheet();}
     else{S.pinDraft={step:1,first:'',cur:'',err:'두 번 입력한 번호가 달라요. 처음부터 다시 입력하세요.'};renderSheet();}}}
 };
-const FAST=new Set(['pinKey','kp']);
+const FAST=new Set(['pinKey','kp','sugPick','sugClose']);
 // 숫자 키는 닿는 순간 입력돼요. 그 손가락을 뗄 때 생기는 클릭이 다른 버튼에 떨어지지 않게 잠깐 막아요
 // 날짜·시간 칸을 누르면 휴대폰 달력 창을 확실히 띄워요(일부 폰에서 투명한 날짜 칸이 안 열리는 문제 대비)
 document.addEventListener('click',e=>{const t=e.target;if(t&&t.matches&&t.matches('input[type=date],input[type=time],input[type=month]')&&typeof t.showPicker==='function'){try{t.showPicker();}catch(x){}}},true);
+let downOnOv=null;document.addEventListener('pointerdown',e=>{downOnOv=e.target&&e.target.classList&&e.target.classList.contains('ov')?e.target:null;},true);
 let ghostUntil=0;document.addEventListener('click',e=>{if(Date.now()<ghostUntil&&!(e.target.closest&&e.target.closest('[data-act]')&&FAST.has(e.target.closest('[data-act]').dataset.act))){e.preventDefault();e.stopImmediatePropagation();}},true);
 document.addEventListener('pointerdown',e=>{if(e.button>0)return;const el=e.target.closest('[data-act]');if(!el||!FAST.has(el.dataset.act))return;e.preventDefault();ghostUntil=Date.now()+350;
   el.classList.add('press');setTimeout(()=>el.classList.remove('press'),130);try{navigator.vibrate&&navigator.vibrate(8);}catch(x){}ACT[el.dataset.act](el,e);});
 document.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(!el)return;if(FAST.has(el.dataset.act))return;if(el.tagName==='INPUT'&&el.type==='checkbox'&&e.type==='click'){ACT[el.dataset.act]&&ACT[el.dataset.act](el,e);return;}const f=ACT[el.dataset.act];if(f)f(el,e);});
 // 내역 자동 완성: 예전에 적은 '내용'을 보여주고, 고르면 분류·자산·금액까지 채워요
-function sugList(q){q=(q||'').trim();if(!q||!S.settings.autoFill||!S.form)return [];const f=S.form;const seen=new Set();const out=[];
+function sugList(q){q=(q||'').trim();if(q.length<2||!S.settings.autoFill||!S.form)return [];const f=S.form;const seen=new Set();const out=[];
   const ms=Object.keys(Object.assign({},S.cache,S.live)).sort().reverse();
-  for(const ym of ms){for(const t of txOf(ym).slice().sort((a,b)=>b.date.localeCompare(a.date))){if(t.type!==f.type||!t.memo)continue;const m=t.memo.trim();if(seen.has(m)||!m.includes(q)||m===q)continue;seen.add(m);out.push(t);if(out.length>=6)return out;}}return out;}
+  for(const ym of ms){for(const t of txOf(ym).slice().sort((a,b)=>b.date.localeCompare(a.date))){if(t.type!==f.type||!t.memo)continue;const m=t.memo.trim();if(seen.has(m)||!m.includes(q)||m===q)continue;seen.add(m);out.push(t);if(out.length>=4)return out;}}return out;}
 function updSug(){const box=document.getElementById('f-sug');const inp=document.getElementById('f-memo');if(!box||!inp)return;const l=sugList(inp.value);S._sug=l;
-  if(!l.length){box.hidden=true;box.innerHTML='';return;}box.hidden=false;box.innerHTML=l.map((t,i)=>`<button data-act="sugPick" data-i="${i}"><span>${esc(t.memo)}</span><small>${esc(t.type==='trf'?accName(t.acc)+' → '+accName(t.to):(t.cat||'')+(t.sub?' › '+t.sub:'')+' · '+accName(t.acc))} · ${won(t.amount)}원</small></button>`).join('');}
+  if(!l.length){box.hidden=true;box.innerHTML='';return;}box.hidden=false;box.innerHTML=`<div class="sugh"><span>예전 내역</span><button data-act="sugClose" aria-label="닫기">×</button></div>`+l.map((t,i)=>`<button data-act="sugPick" data-i="${i}"><span>${esc(t.memo)}</span><small>${esc(t.type==='trf'?accName(t.acc)+' → '+accName(t.to):(t.cat||'')+(t.sub?' › '+t.sub:'')+' · '+accName(t.acc))} · ${won(t.amount)}원</small></button>`).join('');}
 document.addEventListener('input',e=>{const t=e.target;
-  if(t.id==='f-memo'&&S.form){clearTimeout(ACT._sgt);ACT._sgt=setTimeout(updSug,120);}
+  if(t.id==='f-memo'&&S.form&&!S.sugOff){clearTimeout(ACT._sgt);ACT._sgt=setTimeout(updSug,250);}
   if(t.id==='f-amt'&&S.form){S.form.amountStr=t.value;const v=calc(t.value);const c=document.getElementById('f-calc');if(c)c.textContent=/[+\-*/×÷−]/.test(t.value.replace(/^-/,''))&&!isNaN(v)?'= '+won(v)+'원':'';}
   if(t.id==='q'){S.search=t.value;clearTimeout(ACT._qt);ACT._qt=setTimeout(updateSearch,200);}
   if(t.id==='sms-text'&&S.sms)S.sms.text=t.value;
   if(t.id==='memo-text'&&S.memo){S.memo.text=t.value;const st=document.getElementById('memo-st');if(st)st.textContent=t.value===S.memo.saved?'저장됨':'저장 안 됨';}});
+document.addEventListener('focusout',e=>{if(e.target&&e.target.id==='f-memo')setTimeout(()=>{const b=document.getElementById('f-sug');if(b&&!b.contains(document.activeElement)){b.hidden=true;}},180);});
+document.addEventListener('keydown',e=>{if(e.target&&e.target.id==='f-memo'&&(e.key==='Escape'||e.key==='Enter')){const b=document.getElementById('f-sug');if(b&&!b.hidden){b.hidden=true;e.stopPropagation();}}},true);
 document.addEventListener('compositionend',e=>{if(e.target&&e.target.id==='q'){S.search=e.target.value;clearTimeout(ACT._qt);ACT._qt=setTimeout(updateSearch,50);}});
 document.addEventListener('change',e=>{const t=e.target;
   if(t.dataset&&t.dataset.fg){const g=t.dataset.fg;const tab=S.fTab;const F=Object.assign({},S.filter);

@@ -702,3 +702,6 @@ button.acc:active{background:var(--sunk)}
 .lkfoot{gap:clamp(14px,2.6vh,22px)}
 .lkfoot .lk-back{margin-top:6px}
 .lkfoot .lk-forgot{margin-top:0;padding:10px 14px}
+.sugh{display:flex;justify-content:space-between;align-items:center;padding:6px 8px 6px 14px;font-size:12px;color:var(--muted);background:var(--bg)}
+.sugh button{width:28px;height:28px;font-size:18px;color:var(--muted)}
+.sug{max-height:240px}

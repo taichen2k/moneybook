@@ -203,7 +203,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=48; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=49; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -1197,7 +1197,7 @@ const ACT={
 const FAST=new Set(['pinKey','kp','sugPick','sugClose']);
 // 숫자 키는 닿는 순간 입력돼요. 그 손가락을 뗄 때 생기는 클릭이 다른 버튼에 떨어지지 않게 잠깐 막아요
 // 날짜·시간 칸을 누르면 휴대폰 달력 창을 확실히 띄워요(일부 폰에서 투명한 날짜 칸이 안 열리는 문제 대비)
-document.addEventListener('click',e=>{const t=e.target;if(t&&t.matches&&t.matches('input[type=date],input[type=time],input[type=month]')&&typeof t.showPicker==='function'){try{t.showPicker();}catch(x){}}},true);
+document.addEventListener('click',e=>{const t=e.target;if(t&&t.matches&&t.matches('input[type=date],input[type=time],input[type=month]')&&typeof t.showPicker==='function'&&!matchMedia('(pointer:fine)').matches&&!t.classList.contains('typable')){try{t.showPicker();}catch(x){}}},true);
 let downOnOv=null;document.addEventListener('pointerdown',e=>{downOnOv=e.target&&e.target.classList&&e.target.classList.contains('ov')?e.target:null;},true);
 let ghostUntil=0;document.addEventListener('click',e=>{if(Date.now()<ghostUntil&&!(e.target.closest&&e.target.closest('[data-act]')&&FAST.has(e.target.closest('[data-act]').dataset.act))){e.preventDefault();e.stopImmediatePropagation();}},true);
 document.addEventListener('pointerdown',e=>{if(e.button>0)return;const el=e.target.closest('[data-act]');if(!el||!FAST.has(el.dataset.act))return;e.preventDefault();ghostUntil=Date.now()+350;
@@ -1223,7 +1223,7 @@ document.addEventListener('change',e=>{const t=e.target;
     if(g==='all'){const keys=tab==='acc'?S.settings.accounts.map(a=>a.id):(S.settings.cats[tab]||[]);F[tab]=t.checked?keys.slice():[];}
     else{const set=new Set(F[g]);if(t.checked)set.add(t.value);else set.delete(t.value);F[g]=[...set];}
     S.filter=F;render();return;}
-  if(t.id==='f-date'&&S.form){readForm();S.form.date=okDate(t.value)?t.value:S.form.date;renderSheet();return;}
+  if(t.id==='f-date'&&S.form){readForm();S.form.date=okDate(t.value)?t.value:S.form.date;if(!matchMedia('(pointer:fine)').matches)renderSheet();return;}// PC에서 날짜를 치는 동안 화면을 다시 그리면 입력이 끊겨서 그리지 않아요
   if(t.id==='xl-in'&&t.files&&t.files[0]){const file=t.files[0];t.value='';S.bkData=null;S.bkAsk=false;S.xlInfo='엑셀을 읽는 중이에요…';renderSheet();
     (async()=>{try{const X=await loadXLSX();const buf=await file.arrayBuffer();const snap=xlsToSnap(X,buf);const n=Object.values(snap.tx).reduce((a,l)=>a+l.length,0);if(!n)throw new Error('empty');
       const j=cleanSnap(snap);const plan=await analyzeSnapshot(j);j._plan=plan;S.bkData=j;

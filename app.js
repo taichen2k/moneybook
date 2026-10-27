@@ -46,8 +46,8 @@ function statPeriod(){if(S.sp==='week'){const a=S.spWeek||today();const st=addDa
   return period(S.label);}
 async function hashPin(pin,salt){const txt=salt+':'+pin;try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(txt));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');}
   catch(e){let h=2166136261;for(const c of txt){h^=c.charCodeAt(0);h=Math.imul(h,16777619)>>>0;}return 'f'+h.toString(16);}}
-/* ---------- 지문·얼굴 잠금 해제 (휴대폰의 화면 잠금 인증 = 패스키 방식) ----------
-   지문·얼굴 정보는 휴대폰 밖으로 나가지 않아요. 이 기기에 '열쇠'를 하나 만들어 두고, 열 때 휴대폰이 지문·얼굴로 본인 확인을 해 줘요. */
+/* ---------- 지문·패턴 잠금 해제 (휴대폰의 화면 잠금 인증 = 패스키 방식) ----------
+   지문·패턴 정보는 휴대폰 밖으로 나가지 않아요. 이 기기에 '열쇠'를 하나 만들어 두고, 열 때 휴대폰이 지문·패턴로 본인 확인을 해 줘요. */
 const b64u=b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const ub64u=s2=>Uint8Array.from(atob(s2.replace(/-/g,'+').replace(/_/g,'/')+'==='.slice((s2.length+3)%4)),c=>c.charCodeAt(0));
 function bioGet(){try{const o=JSON.parse(localStorage.getItem('moneybook.bio')||'null');return o&&o.id?o:null;}catch(e){return null;}}
@@ -59,12 +59,12 @@ async function bioRegister(){const rnd=n=>crypto.getRandomValues(new Uint8Array(
   if(!cred)throw new Error('no');bioSet({id:b64u(cred.rawId),at:Date.now()});}
 async function bioVerify(){const b=bioGet();if(!b)throw new Error('none');
   const a=await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rpId:location.hostname,allowCredentials:[{type:'public-key',id:ub64u(b.id),transports:['internal','hybrid']}],userVerification:'required',timeout:60000}});
-  const ad=new Uint8Array(a.response.authenticatorData);if(!(ad[32]&0x04))throw new Error('uv');// 지문·얼굴·화면잠금으로 본인 확인이 됐는지
+  const ad=new Uint8Array(a.response.authenticatorData);if(!(ad[32]&0x04))throw new Error('uv');// 지문·패턴(화면잠금)으로 본인 확인이 됐는지
   return true;}
 async function bioUnlock(auto){if(S.bioBusy||!lockOn()||!bioGet())return;S.bioBusy=true;
   try{await bioVerify();pinFails(0);S.locked=false;S.unlockedOnce=true;S.pinIn='';S.pinErr='';markActive();render();}
   catch(e){const n=e&&e.name;// 사용자가 취소하거나 시간이 지나면(NotAllowedError) 조용히 비밀번호 화면으로
-    if(!auto&&n!=='NotAllowedError'&&n!=='AbortError'){S.pinErr='지문·얼굴 확인을 하지 못했어요. 비밀번호를 눌러 주세요';updLock();}}
+    if(!auto&&n!=='NotAllowedError'&&n!=='AbortError'){S.pinErr='지문·패턴 확인을 하지 못했어요. 비밀번호를 눌러 주세요';updLock();}}
   finally{S.bioBusy=false;}}
 function padHtml(){return `<div class="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-act="pinKey" data-k="${n}">${n}</button>`).join('')}<span></span><button data-act="pinKey" data-k="0">0</button><button data-act="pinKey" data-k="back" aria-label="지우기">⌫</button></div>`;}
 function dotsHtml(n,bad){return `<div class="pdots ${bad?'bad':''}">${[0,1,2,3].map(i=>`<i class="${i<n?'on':''}"></i>`).join('')}</div>`;}
@@ -80,7 +80,7 @@ function renderLock(){const r=$('#lockRoot');const on=lockOn();document.document
   if(!on){const l=r.querySelector('.lock');if(l&&!l.classList.contains('bye')){l.classList.add('bye');setTimeout(()=>{if(!lockOn())r.innerHTML='';},350);}else if(!l)r.innerHTML='';return;}
   if(r.querySelector('.lock.bye'))r.innerHTML='';
   if(r.querySelector('.lock')){updLock();return;}
-  r.innerHTML=`<div class="lock" role="dialog" aria-label="비밀번호 입력"><img src="logo-mark.svg" alt="" width="72" height="72" style="border-radius:18px;box-shadow:0 4px 14px rgba(0,0,0,.18)"><h2>티끌모아</h2><div>비밀번호 4자리를 입력하세요</div><div id="lockDots">${dotsHtml(S.pinIn.length,!!S.pinErr)}</div><div class="perr" id="lockErr">${esc(S.pinErr)}</div>${padHtml()}${bioGet()?`<button class="lk-bio" data-act="bioUnlock">${FPI}<span>지문·얼굴로 열기</span></button>`:''}<button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div>`;
+  r.innerHTML=`<div class="lock" role="dialog" aria-label="비밀번호 입력"><img src="logo-mark.svg" alt="" width="72" height="72" style="border-radius:18px;box-shadow:0 4px 14px rgba(0,0,0,.18)"><h2>티끌모아</h2><div>비밀번호 4자리를 입력하세요</div><div id="lockDots">${dotsHtml(S.pinIn.length,!!S.pinErr)}</div><div class="perr" id="lockErr">${esc(S.pinErr)}</div>${padHtml()}${bioGet()?`<button class="lk-bio" data-act="bioUnlock">${FPI}<span>지문·패턴로 열기</span></button>`:''}<button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div>`;
   if(bioGet()&&!document.hidden)setTimeout(()=>bioUnlock(true),250);}
 // 틀린 횟수는 기기에 기억해서 새로고침해도 초기화되지 않아요. 5번부터 30초, 60초… 기다려야 해요.
 function pinFails(add){let o={n:0,at:0};try{o=JSON.parse(localStorage.getItem('moneybook.pinFail')||'{}');}catch(e){}o.n=add?(o.n||0)+1:0;o.at=Date.now();try{localStorage.setItem('moneybook.pinFail',JSON.stringify(o));}catch(e){}return o.n;}
@@ -165,7 +165,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=32; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=33; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -684,7 +684,7 @@ const SHEETS={
   if(d){return head('비밀번호 잠금')+`<div class="pinbox"><img src="logo-mark.svg" alt="" width="56" height="56"><div class="pin-step"><span class="${d.step===1?'on':''}">1</span><i></i><span class="${d.step===2?'on':''}">2</span></div>
     <b class="pin-t">${d.step===1?'새 비밀번호 4자리':'한 번 더 입력해 주세요'}</b><span class="pin-s">${d.step===1?'가계부를 열 때 쓸 번호예요':'확인을 위해 같은 번호를 눌러 주세요'}</span>
     ${dotsHtml(d.cur.length,!!d.err)}<div class="err pin-e">${esc(d.err||'')}</div>${padHtml()}</div>`;}
-  return head('비밀번호 잠금')+`<p style="margin:0;font-size:14px;color:var(--muted)">가계부를 열 때 4자리 비밀번호를 물어봐요. 모든 휴대폰에 똑같이 적용돼요.</p>${st.pin?`<div class="card bioc"><div><b>지문·얼굴로 열기</b><small class="muted">${bioGet()?'이 기기에서 켜져 있어요. 비밀번호 대신 지문이나 얼굴로 바로 열려요.':S.bioOk===false?'이 기기(브라우저)는 지문·얼굴 확인을 지원하지 않아요.':'이 기기에서만 켜져요. 기기마다 한 번씩 켜 주세요.'}</small></div>${S.bioOk===false?'':`<button class="btn ${bioGet()?'':'pri'} sm" data-act="${bioGet()?'bioOff':'bioOn'}">${bioGet()?'끄기':'켜기'}</button>`}</div>`:''}
+  return head('비밀번호 잠금')+`<p style="margin:0;font-size:14px;color:var(--muted)">가계부를 열 때 4자리 비밀번호를 물어봐요. 모든 휴대폰에 똑같이 적용돼요.</p>${st.pin?`<div class="card bioc"><div><b>지문·패턴로 열기</b><small class="muted">${bioGet()?'이 기기에서 켜져 있어요. 비밀번호 대신 지문이나 휴대폰 패턴으로 바로 열려요.':S.bioOk===false?'이 기기(브라우저)는 지문·패턴 확인을 지원하지 않아요.':'이 기기에서만 켜져요. 기기마다 한 번씩 켜 주세요.'}</small></div>${S.bioOk===false?'':`<button class="btn ${bioGet()?'':'pri'} sm" data-act="${bioGet()?'bioOff':'bioOn'}">${bioGet()?'끄기':'켜기'}</button>`}</div>`:''}
   ${st.pin?`<div class="f"><label for="lockMin">다시 잠그기</label><select class="in-t" id="lockMin">${[[0,'화면을 벗어나면 바로'],[1,'1분 뒤'],[5,'5분 뒤'],[30,'30분 뒤']].map(([v,n])=>`<option value="${v}" ${(st.lockMin??1)===v?'selected':''}>${n}</option>`).join('')}</select></div>
   <div class="acts"><button class="btn danger" data-act="pinOff">잠금 끄기</button><button class="btn" data-act="pinStart">비밀번호 바꾸기</button></div>`:
   `<div class="acts"><button class="btn pri" data-act="pinStart">비밀번호 설정</button></div>`}`;},
@@ -1006,9 +1006,9 @@ const ACT={
  export(el){doExport(el.dataset.k);},
  pinStart(){S.pinDraft={step:1,first:'',cur:'',err:''};renderSheet();},
  bioUnlock(){bioUnlock(false);},
- async bioOn(){if(!(await bioAvail())){S.bioOk=false;renderSheet();toast('이 기기에서는 지문·얼굴 확인을 쓸 수 없어요');return;}
-  try{await bioRegister();toast('지문·얼굴로 열기를 켰어요');}catch(e){toast(e&&e.name==='NotAllowedError'?'취소했어요':'켜지 못했어요 ('+((e&&e.name)||'오류')+')');}renderSheet();},
- bioOff(){bioSet(null);toast('지문·얼굴로 열기를 껐어요');renderSheet();},
+ async bioOn(){if(!(await bioAvail())){S.bioOk=false;renderSheet();toast('이 기기에서는 지문·패턴 확인을 쓸 수 없어요');return;}
+  try{await bioRegister();toast('지문·패턴로 열기를 켰어요');}catch(e){toast(e&&e.name==='NotAllowedError'?'취소했어요':'켜지 못했어요 ('+((e&&e.name)||'오류')+')');}renderSheet();},
+ bioOff(){bioSet(null);toast('지문·패턴로 열기를 껐어요');renderSheet();},
  pinOff(){bioSet(null);saveSettings({pin:null});toast('잠금을 껐어요');renderSheet();},
  async pinKey(el){const k=el.dataset.k;
   if(lockOn()){const wait=lockWait();if(wait){S.pinIn='';S.pinErr=`여러 번 틀렸어요. ${wait}초 뒤에 다시 입력하세요`;updLock();return;}if(k==='back'){S.pinIn=S.pinIn.slice(0,-1);S.pinErr='';updLock();return;}if(S.pinIn.length>=4)return;S.pinIn+=k;S.pinErr='';updLock();

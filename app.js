@@ -84,7 +84,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=11; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=12; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -499,9 +499,16 @@ async function doExport(scope){if(S.exporting)return;S.exporting=true;toast('엑
     list=list.slice().sort((a,b)=>a.date.localeCompare(b.date)||(a.time||'').localeCompare(b.time||''));
     const money=ws=>{for(const k in ws){if(k[0]!=='!'&&ws[k].t==='n')ws[k].z='#,##0';}return ws;};
     const wb=X.utils.book_new();
-    // 1. 내역
-    const rows=list.map(t=>({'날짜':t.date,'시간':t.time||'','구분':TYPE_NAME[t.type],'자산':accName(t.acc),'받는 자산':t.to?accName(t.to):'','분류':t.cat||'','소분류':t.sub||'','내용':t.memo||'','금액':t.amount,'메모':t.note||''}));
-    const w1=money(X.utils.json_to_sheet(rows));w1['!cols']=[{wch:11},{wch:6},{wch:5},{wch:16},{wch:12},{wch:14},{wch:10},{wch:30},{wch:12},{wch:26}];w1['!autofilter']={ref:w1['!ref']};
+    // 1. 내역 — 편한가계부 내보내기와 같은 양식
+    const xdt=t=>{let y,mo,d,h=0,mi=0,se=0;[y,mo,d]=t.date.split('-').map(Number);
+      if(t.src==='편한가계부'&&t.created){const c=new Date(t.created);if(ymd(c)===t.date){h=c.getHours();mi=c.getMinutes();se=c.getSeconds();}}
+      else if(t.time){[h,mi]=t.time.split(':').map(Number);}
+      return {sort:t.date+' '+pad(h)+':'+pad(mi)+':'+pad(se),serial:Date.UTC(y,mo-1,d,h,mi,se)/864e5+25569};};
+    const kind=t=>t.type==='inc'?'수입':t.type==='exp'?'지출':'이체';
+    const recs=list.map(t=>({t,x:xdt(t)})).sort((a,b)=>b.x.sort.localeCompare(a.x.sort));
+    const aoa=[['날짜','자산','분류','소분류','내용','금액(원)','수입/지출','메모','금액','화폐']].concat(recs.map(({t,x})=>[x.serial,accName(t.acc),t.type==='trf'?accName(t.to):(t.cat||''),t.sub||'',t.memo||'',t.amount,kind(t),t.note||'',t.amount,'KRW']));
+    const w1=X.utils.aoa_to_sheet(aoa);for(let r=1;r<aoa.length;r++){const c=w1[X.utils.encode_cell({r,c:0})];if(c){c.t='n';c.z='yyyy. mm. dd hh:mm:ss';}}
+    w1['!cols']=[{wch:21},{wch:16},{wch:16},{wch:10},{wch:30},{wch:12},{wch:9},{wch:28},{wch:12},{wch:6}];
     X.utils.book_append_sheet(wb,w1,'내역');
     // 2. 월별 합계
     const mon={};list.forEach(t=>{const k=t.date.slice(0,7);const o=mon[k]=mon[k]||{i:0,e:0};if(t.type==='inc')o.i+=t.amount;else if(t.type==='exp')o.e+=t.amount;});

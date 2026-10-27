@@ -67,6 +67,30 @@ async function bioUnlock(auto){if(S.bioBusy||!lockOn()||!bioGet())return;S.bioBu
   catch(e){const n=e&&e.name;// 사용자가 취소하거나 시간이 지나면(NotAllowedError) 조용히 비밀번호 화면으로
     if(!auto&&n!=='NotAllowedError'&&n!=='AbortError'){S.pinErr='지문·패턴 확인을 하지 못했어요. 비밀번호를 눌러 주세요';updLock();}}
   finally{S.bioBusy=false;}}
+/* ---------- 앱 패턴 잠금: 3×3 점을 이어 그려서 열어요 (휴대폰 패턴과 따로, 티끌모아 전용) ---------- */
+function patPadHtml(mode){return `<div class="patpad" data-pat="${mode}"><svg class="patsvg" viewBox="0 0 300 300"><polyline points="" /></svg><div class="pd">${[0,1,2,3,4,5,6,7,8].map(i=>`<i data-i="${i}"></i>`).join('')}</div></div>`;}
+let PT=null;
+function patHit(e){const pad=PT.pad;const dots=[...pad.querySelectorAll('.pd i')];const pr=pad.getBoundingClientRect();
+  for(const d of dots){const r=d.getBoundingClientRect();const cx=r.left+r.width/2,cy=r.top+r.height/2;const i=+d.dataset.i;
+    if(Math.hypot(e.clientX-cx,e.clientY-cy)<pr.width*0.12&&!PT.seq.includes(i)){const l=PT.seq[PT.seq.length-1];
+      if(l!=null){const a=[Math.floor(l/3),l%3],b=[Math.floor(i/3),i%3];if((a[0]+b[0])%2===0&&(a[1]+b[1])%2===0){const m=((a[0]+b[0])/2)*3+(a[1]+b[1])/2;if(!PT.seq.includes(m))PT.seq.push(m);}}
+      PT.seq.push(i);try{navigator.vibrate&&navigator.vibrate(6);}catch(x){}}}
+  const pt=i=>{const d=dots[i].getBoundingClientRect();return [((d.left+d.width/2-pr.left)/pr.width*300).toFixed(1),((d.top+d.height/2-pr.top)/pr.height*300).toFixed(1)];};
+  const pts=PT.seq.map(i=>pt(i).join(','));if(PT.seq.length&&e.type!=='pointerup')pts.push(((e.clientX-pr.left)/pr.width*300).toFixed(1)+','+((e.clientY-pr.top)/pr.height*300).toFixed(1));
+  pad.querySelector('polyline').setAttribute('points',pts.join(' '));dots.forEach(d=>d.classList.toggle('on',PT.seq.includes(+d.dataset.i)));}
+document.addEventListener('pointerdown',e=>{const pad=e.target.closest&&e.target.closest('.patpad');if(!pad)return;e.preventDefault();pad.classList.remove('bad');PT={pad,seq:[]};try{pad.setPointerCapture(e.pointerId);}catch(x){}patHit(e);},{passive:false});
+document.addEventListener('pointermove',e=>{if(PT){e.preventDefault();patHit(e);}},{passive:false});
+const patEnd=e=>{if(!PT)return;const {pad,seq}=PT;patHit(Object.assign({},{clientX:e.clientX,clientY:e.clientY,type:'pointerup'}));PT=null;patDone(pad,seq);};
+document.addEventListener('pointerup',patEnd);document.addEventListener('pointercancel',patEnd);
+function patClear(pad,bad){if(bad)pad.classList.add('bad');setTimeout(()=>{if(!pad.isConnected)return;pad.classList.remove('bad');pad.querySelector('polyline').setAttribute('points','');pad.querySelectorAll('.pd i').forEach(d=>d.classList.remove('on'));},bad?600:150);}
+async function patDone(pad,seq){const mode=pad.dataset.pat;if(!seq.length)return;
+  if(seq.length<4){patClear(pad,true);if(mode==='lock'){S.pinErr='점을 4개 이상 이어 주세요';updLock();}else{S.patDraft.err='점을 4개 이상 이어 주세요';renderSheet();}return;}
+  if(mode==='lock'){const wait=lockWait();if(wait){S.pinErr=`여러 번 틀렸어요. ${wait}초 뒤에 다시 그려 주세요`;updLock();patClear(pad,true);return;}
+    const p=S.settings.pat;const h=await hashPin(seq.join('-'),p.salt);if(h===p.hash){pinFails(0);ghostUntil=Date.now()+350;S.locked=false;S.unlockedOnce=true;S.pinIn='';S.pinErr='';markActive();render();}
+    else{const n=pinFails(1);S.pinErr=n>=5?`5번 틀렸어요. ${lockWait()}초 뒤에 다시 그려 주세요`:`패턴이 달라요 (${n}/5)`;updLock();patClear(pad,true);}return;}
+  const d=S.patDraft;if(d.step===1){d.first=seq.join('-');d.step=2;d.err='';renderSheet();return;}
+  if(seq.join('-')!==d.first){d.step=1;d.first='';d.err='처음 그린 패턴과 달라요. 다시 그려 주세요';renderSheet();return;}
+  const salt=newId();const hash=await hashPin(d.first,salt);saveSettings({pat:{salt,hash}});S.patDraft=null;toast('패턴을 설정했어요');renderSheet();}
 function padHtml(){return `<div class="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-act="pinKey" data-k="${n}">${n}</button>`).join('')}<span></span><button data-act="pinKey" data-k="0">0</button><button data-act="pinKey" data-k="back" aria-label="지우기">⌫</button></div>`;}
 function dotsHtml(n,bad){return `<div class="pdots ${bad?'bad':''}">${[0,1,2,3].map(i=>`<i class="${i<n?'on':''}"></i>`).join('')}</div>`;}
 function updDraft(){const d=S.pinDraft;const box=document.querySelector('.pinbox .pdots');if(!d||!box){renderSheet();return;}box.outerHTML=dotsHtml(d.cur.length,!!d.err);const e=document.querySelector('.pin-e');if(e)e.textContent=d.err||'';}
@@ -78,7 +102,9 @@ function setHtml(el,h){if(el._h!==h){el.innerHTML=h;el._h=h;}if(el.id==='top')el
 const FPI='<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 11v3.5c0 2-.6 3.8-1.6 5.3M8.5 7.6A5 5 0 0 1 17 11v2.5M7 11a5 5 0 0 1 .2-1.4M15 14.2a14 14 0 0 1-1 5.1M9.6 11a2.4 2.4 0 0 1 4.8 0v1.6M4.6 15.5A11 11 0 0 0 5 11a7 7 0 0 1 12.4-4.4M19 11v1.4"/></svg>';
 // 잠금 해제 방법: 지문·패턴(이 기기에서 켰을 때) 또는 비밀번호. 마지막에 고른 쪽을 기억해요
 // 지문·패턴을 켠 기기는 먼저 '지문 / 패턴 / 비밀번호' 중 고르게 해요. 저절로 창을 띄우지 않아요
-function lockWay(){if(!bioGet())return 'pin';return S.lockWay==='pin'?'pin':'choose';}
+const hasPat=()=>!!(S.settings.pat&&S.settings.pat.hash);// 설정을 받기 전엔 이 기기에 기억해 둔 값으로 판단
+const patOn=()=>S.settingsReady?hasPat():(()=>{try{return localStorage.getItem('moneybook.patOn')==='1';}catch(e){return false;}})();
+function lockWay(){if(S.lockWay==='pin'||(S.lockWay==='pat'&&patOn()))return S.lockWay;return (bioGet()||patOn())?'choose':'pin';}
 function renderLock(){const r=$('#lockRoot');const on=lockOn();document.documentElement.classList.toggle('locked',on);
   // 풀릴 때 잠금 화면을 0.35초 동안 투명하게 남겨 둬서, 마지막 숫자를 누른 손가락이 뒤 화면 버튼을 잘못 누르지 않게 해요
   if(!on){const l=r.querySelector('.lock');if(l&&!l.classList.contains('bye')){l.classList.add('bye');setTimeout(()=>{if(!lockOn())r.innerHTML='';},350);}else if(!l)r.innerHTML='';return;}
@@ -87,8 +113,9 @@ function renderLock(){const r=$('#lockRoot');const on=lockOn();document.document
   const way=lockWay();const PAT='<svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M5 5h7l7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
   const KEY='<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="18" height="11" rx="2"/><circle cx="7.5" cy="12.5" r="1" fill="currentColor"/><circle cx="12" cy="12.5" r="1" fill="currentColor"/><circle cx="16.5" cy="12.5" r="1" fill="currentColor"/></svg>';
   const head2=`<div class="lock" role="dialog" aria-label="잠금 해제"><img src="logo-mark.svg" alt="" width="72" height="72" style="border-radius:18px;box-shadow:0 4px 14px rgba(0,0,0,.18)"><h2>티끌모아</h2>`;
-  if(way==='choose'){r.innerHTML=head2+`<div>어떻게 열까요?</div><div class="lkch"><button data-act="lockWay" data-k="fp">${FPI.replace(/width="26" height="26"/,'width="40" height="40"')}<span>지문</span></button><button data-act="lockWay" data-k="pat">${PAT}<span>패턴</span></button><button data-act="lockWay" data-k="pin">${KEY}<span>비밀번호</span></button></div><div class="perr" id="lockErr">${esc(S.pinErr)}</div><button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div>`;return;}
-  const back=bioGet()?`<button class="lk-back" data-act="lockWay" data-k="choose">‹ 다른 방법으로 열기</button>`:'';
+  if(way==='choose'){r.innerHTML=head2+`<div>잠금 해제 방법을 선택하세요</div><div class="lkch">${bioGet()?`<button data-act="lockWay" data-k="fp">${FPI.replace(/width="26" height="26"/,'width="40" height="40"')}<span>지문</span></button>`:''}${patOn()?`<button data-act="lockWay" data-k="pat">${PAT}<span>패턴</span></button>`:''}<button data-act="lockWay" data-k="pin">${KEY}<span>비밀번호</span></button></div><div class="perr" id="lockErr">${esc(S.pinErr)}</div><button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div>`;return;}
+  const back=(bioGet()||patOn())?`<button class="lk-back" data-act="lockWay" data-k="choose">‹ 다른 방법으로 열기</button>`:'';
+  if(way==='pat'){r.innerHTML=head2+`<div>패턴을 그려 주세요</div><div class="perr" id="lockErr">${esc(S.pinErr)}</div>${patPadHtml('lock')}${back}<button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div>`;return;}
   r.innerHTML=head2+`<div>비밀번호 4자리를 입력하세요</div><div id="lockDots">${dotsHtml(S.pinIn.length,!!S.pinErr)}</div><div class="perr" id="lockErr">${esc(S.pinErr)}</div>${padHtml()}${back}<button class="lk-forgot" data-act="pinForgot">비밀번호를 잊었어요</button></div>`;}
 // 틀린 횟수는 기기에 기억해서 새로고침해도 초기화되지 않아요. 5번부터 30초, 60초… 기다려야 해요.
 function pinFails(add){let o={n:0,at:0};try{o=JSON.parse(localStorage.getItem('moneybook.pinFail')||'{}');}catch(e){}o.n=add?(o.n||0)+1:0;o.at=Date.now();try{localStorage.setItem('moneybook.pinFail',JSON.stringify(o));}catch(e){}return o.n;}
@@ -120,7 +147,7 @@ function normalizeSettings(st){const d=clone(DEFAULTS);st=Object.assign(d,st||{}
   st.weekStart=st.weekStart===1?1:0;st.firstSub=st.firstSub==='cal'?'cal':'daily';
   st.swipe=st.swipe==='off'?'off':'date';st.autoFill=st.autoFill!==false;st.timeMode=['off-desc','off-asc','on-desc','on-asc'].includes(st.timeMode)?st.timeMode:'off-desc';st.inputOrder=st.inputOrder==='cat'?'cat':'amt';st.memoShow=!!st.memoShow;st.colorSet=st.colorSet==='B'?'B':'A';st.carry=!!st.carry;
   st.trfExp=(Array.isArray(st.trfExp)?st.trfExp:[]).map(String).filter(x=>/^[\w-]{1,60}$/.test(x));st.groupOrder=uniq((Array.isArray(st.groupOrder)?st.groupOrder:[]).filter(g=>GK.includes(g)).concat(GK));st.groupHidden=(Array.isArray(st.groupHidden)?st.groupHidden:[]).filter(g=>GK.includes(g)&&!CORE_G.includes(g));
-  const gn=(st.groupNames&&typeof st.groupNames==='object')?st.groupNames:{};const gn2={};for(const k of Object.keys(gn))if(GK.includes(k)&&!BADK.has(k)&&str(gn[k],20).trim())gn2[k]=str(gn[k],20).trim();st.groupNames=gn2;st.cardMode=st.cardMode==='B'?'B':'A';st.nickname=str(st.nickname,20);st.msWeekend=['none','fri','mon'].includes(st.msWeekend)?st.msWeekend:'none';st.tags=uniq((Array.isArray(st.tags)?st.tags:[]).map(x=>str(x,20).trim().replace(/^#/,'')).filter(x=>x&&!BADK.has(x)));
+  const gn=(st.groupNames&&typeof st.groupNames==='object')?st.groupNames:{};const gn2={};for(const k of Object.keys(gn))if(GK.includes(k)&&!BADK.has(k)&&str(gn[k],20).trim())gn2[k]=str(gn[k],20).trim();st.groupNames=gn2;st.cardMode=st.cardMode==='B'?'B':'A';st.nickname=str(st.nickname,20);if(st.pat&&!(typeof st.pat.salt==='string'&&typeof st.pat.hash==='string'))st.pat=null;st.msWeekend=['none','fri','mon'].includes(st.msWeekend)?st.msWeekend:'none';st.tags=uniq((Array.isArray(st.tags)?st.tags:[]).map(x=>str(x,20).trim().replace(/^#/,'')).filter(x=>x&&!BADK.has(x)));
   if(!st.accounts.length)st.accounts=clone(DEFAULTS.accounts||[]);
   const cats={};for(const ty of ['exp','inc']){const l=((st.cats||{})[ty]);cats[ty]=uniq((Array.isArray(l)?l:[]).filter(okName).map(x=>x.trim().slice(0,20)));if(!cats[ty].length)cats[ty]=clone(DEFAULTS.cats[ty]);}st.cats=cats;
   st.recurring=(Array.isArray(st.recurring)?st.recurring:[]).filter(r=>r&&typeof r==='object'&&isFinite(Number(r.amount))&&Number(r.amount)>0).map(r=>Object.assign({},r,{id:str(r.id,60)||newId(),type:okType(r.type),day:Math.min(31,Math.max(1,parseInt(r.day,10)||1)),amount:Number(r.amount),done:(Array.isArray(r.done)?r.done:[]).filter(okYm)})).map(r=>{if(!FREQ[r.freq]){r.freq='monthly';const dn=r.done.slice().sort();const sm=dn[0]||ymd(new Date()).slice(0,7);r.start=okDate(r.start)?r.start:sm+'-'+pad(Math.min(r.day,daysIn(sm)));const lm=dn[dn.length-1];r.last=okDate(r.last)?r.last:(lm?lm+'-'+pad(Math.min(r.day,daysIn(lm))):'');}if(!okDate(r.start))r.start=ymd(new Date());if(r.last&&!okDate(r.last))r.last='';return r;});
@@ -175,7 +202,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=39; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=40; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -722,10 +749,11 @@ const SHEETS={
   <div class="kp" style="padding:10px max(16px,env(safe-area-inset-left,0px)) calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:8px"><button class="btn pri" data-act="close">적용</button></div>`;},
 
  pin(){const d=S.pinDraft;const st=S.settings;
+  if(S.patDraft){const pd=S.patDraft;return head('패턴 설정')+`<div class="pinbox"><div class="pin-step"><span class="${pd.step===1?'on':''}">1</span><i></i><span class="${pd.step===2?'on':''}">2</span></div><b class="pin-t">${pd.step===1?'새 패턴을 그려 주세요':'한 번 더 그려 주세요'}</b><span class="pin-s">점을 4개 이상 이어서 그려요</span><div class="err pin-e">${esc(pd.err||'')}</div>${patPadHtml('set')}<button class="btn" data-act="patCancel" style="margin-top:10px">취소</button></div>`;}
   if(d){return head('비밀번호 잠금')+`<div class="pinbox"><img src="logo-mark.svg" alt="" width="56" height="56"><div class="pin-step"><span class="${d.step===1?'on':''}">1</span><i></i><span class="${d.step===2?'on':''}">2</span></div>
     <b class="pin-t">${d.step===1?'새 비밀번호 4자리':'한 번 더 입력해 주세요'}</b><span class="pin-s">${d.step===1?'가계부를 열 때 쓸 번호예요':'확인을 위해 같은 번호를 눌러 주세요'}</span>
     ${dotsHtml(d.cur.length,!!d.err)}<div class="err pin-e">${esc(d.err||'')}</div>${padHtml()}</div>`;}
-  return head('비밀번호 잠금')+`<p style="margin:0;font-size:14px;color:var(--muted)">가계부를 열 때 4자리 비밀번호를 물어봐요. 모든 휴대폰에 똑같이 적용돼요.</p>${st.pin?`<div class="card bioc"><div><b>지문·패턴으로 열기</b><small class="muted">${bioGet()?'이 기기에서 켜져 있어요. 비밀번호 대신 지문이나 휴대폰 패턴으로 바로 열려요.':S.bioOk===false?'이 기기(브라우저)는 지문·패턴 확인을 지원하지 않아요.':'이 기기에서만 켜져요. 기기마다 한 번씩 켜 주세요.'}</small></div>${S.bioOk===false?'':`<button class="btn ${bioGet()?'':'pri'} sm" data-act="${bioGet()?'bioOff':'bioOn'}">${bioGet()?'끄기':'켜기'}</button>`}</div>`:''}
+  return head('비밀번호 잠금')+`<p style="margin:0;font-size:14px;color:var(--muted)">가계부를 열 때 4자리 비밀번호를 물어봐요. 모든 휴대폰에 똑같이 적용돼요.</p>${st.pin?`<div class="card bioc"><div><b>패턴으로 열기</b><small class="muted">${st.pat?'켜져 있어요. 잠금 화면에서 \'패턴\'을 고르면 그린 패턴으로 열려요. 모든 휴대폰에 똑같이 적용돼요.':'티끌모아 전용 패턴(3×3 점)을 정해 두면 잠금 화면에서 패턴만 그려서 열 수 있어요.'}</small></div><span class="bioc-b">${st.pat?'<button class="btn sm" data-act="patStart">바꾸기</button><button class="btn sm" data-act="patOff">끄기</button>':'<button class="btn pri sm" data-act="patStart">켜기</button>'}</span></div>`:''}${st.pin?`<div class="card bioc"><div><b>지문으로 열기</b><small class="muted">${bioGet()?'이 기기에서 켜져 있어요. 잠금 화면에서 \'지문\'을 고르면 지문으로 열려요.':S.bioOk===false?'이 기기(브라우저)는 지문 확인을 지원하지 않아요.':'이 기기에서만 켜져요. 기기마다 한 번씩 켜 주세요.'}</small></div>${S.bioOk===false?'':`<button class="btn ${bioGet()?'':'pri'} sm" data-act="${bioGet()?'bioOff':'bioOn'}">${bioGet()?'끄기':'켜기'}</button>`}</div>`:''}
   ${st.pin?`<div class="f"><label for="lockMin">다시 잠그기</label><select class="in-t" id="lockMin">${[[0,'화면을 벗어나면 바로'],[1,'1분 뒤'],[5,'5분 뒤'],[30,'30분 뒤']].map(([v,n])=>`<option value="${v}" ${(st.lockMin??1)===v?'selected':''}>${n}</option>`).join('')}</select></div>
   <div class="acts"><button class="btn danger" data-act="pinOff">잠금 끄기</button><button class="btn" data-act="pinStart">비밀번호 바꾸기</button></div>`:
   `<div class="acts"><button class="btn pri" data-act="pinStart">비밀번호 설정</button></div>`}`;},
@@ -912,7 +940,7 @@ const ACT={
  async pinForgot(){// 구글 계정으로 한 번 더 확인되면 잠금을 풀고 비밀번호를 지워요
   if(!S.user||!window.firebase)return;try{const pr=new firebase.auth.GoogleAuthProvider();pr.setCustomParameters({prompt:'select_account',login_hint:S.user.email||''});
    const r=await firebase.auth().currentUser.reauthenticateWithPopup(pr);if(!r||!r.user||r.user.uid!==S.user.uid)throw 0;
-   pinFails(0);bioSet(null);await saveSettings({pin:null});S.locked=false;S.unlockedOnce=true;S.pinIn='';S.pinErr='';markActive();render();toast('잠금을 껐어요. 설정에서 새 비밀번호를 정해 주세요');}
+   pinFails(0);bioSet(null);await saveSettings({pin:null,pat:null});S.locked=false;S.unlockedOnce=true;S.pinIn='';S.pinErr='';markActive();render();toast('잠금을 껐어요. 설정에서 새 비밀번호를 정해 주세요');}
   catch(e){const c=(e&&e.code)||'';if(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request')return;S.pinErr=c==='auth/user-mismatch'?'가계부 주인 계정으로 확인해야 해요':'구글 확인을 하지 못했어요';updLock();}},
  async logoutNow(){try{await firebase.auth().signOut();}catch(e){}try{await S.fs.terminate();await S.fs.clearPersistence();}catch(e){}
   try{Object.keys(localStorage).filter(k=>k.startsWith('moneybook.f.')||k==='moneybook.pinOn').forEach(k=>localStorage.removeItem(k));}catch(e){}location.reload();},
@@ -1061,6 +1089,7 @@ const ACT={
   if(k==='groups'){S.grpSel='';S.grpEd=null;}
   if(k==='backup'){S.resetMode='';S.xlInfo='';}
   if(k==='mypage'){S.nkEdit=false;S.ghOffAsk=false;}
+  if(k==='pin')S.patDraft=null;
   if(k==='pin'&&S.bioOk==null)bioAvail().then(ok=>{S.bioOk=ok;if(S.sheet==='pin')renderSheet();});
   if(k==='accounts')S.accDraft=clone(S.settings.accounts);
   if(k==='accHide'||k==='accDel'||k==='accOrder'){S.amenu=false;S.accDelAsk='';S.accSel='';render();}
@@ -1125,11 +1154,14 @@ const ACT={
  xlsIn(){const i=document.getElementById('xl-in');if(i)i.click();},
  pinStart(){S.pinDraft={step:1,first:'',cur:'',err:''};renderSheet();},
  bioUnlock(){bioUnlock(false);},
- lockWay(el){const k=el.dataset.k;S.pinErr='';if(k==='fp'||k==='pat'){if(k==='pat')toast("창이 뜨면 아래 '패턴 사용'을 누르세요");bioUnlock(false);return;}S.lockWay=k==='pin'?'pin':'';S.pinIn='';$('#lockRoot').innerHTML='';renderLock();},
+ lockWay(el){const k=el.dataset.k;S.pinErr='';if(k==='fp'){bioUnlock(false);return;}S.lockWay=k==='pin'||k==='pat'?k:'';S.pinIn='';$('#lockRoot').innerHTML='';renderLock();},
  async bioOn(){if(!(await bioAvail())){S.bioOk=false;renderSheet();toast('이 기기에서는 지문·패턴 확인을 쓸 수 없어요');return;}
-  try{await bioRegister();toast('지문·패턴으로 열기를 켰어요');}catch(e){toast(e&&e.name==='NotAllowedError'?'취소했어요':'켜지 못했어요 ('+((e&&e.name)||'오류')+')');}renderSheet();},
- bioOff(){bioSet(null);toast('지문·패턴으로 열기를 껐어요');renderSheet();},
- pinOff(){bioSet(null);saveSettings({pin:null});toast('잠금을 껐어요');renderSheet();},
+  try{await bioRegister();toast('지문으로 열기를 켰어요');}catch(e){toast(e&&e.name==='NotAllowedError'?'취소했어요':'켜지 못했어요 ('+((e&&e.name)||'오류')+')');}renderSheet();},
+ bioOff(){bioSet(null);toast('지문으로 열기를 껐어요');renderSheet();},
+ patStart(){S.patDraft={step:1,first:'',err:''};renderSheet();},
+ patCancel(){S.patDraft=null;renderSheet();},
+ patOff(){saveSettings({pat:null});toast('패턴 잠금을 껐어요');renderSheet();},
+ pinOff(){bioSet(null);saveSettings({pin:null,pat:null});toast('잠금을 껐어요');renderSheet();},
  async pinKey(el){const k=el.dataset.k;
   if(lockOn()){const wait=lockWait();if(wait){S.pinIn='';S.pinErr=`여러 번 틀렸어요. ${wait}초 뒤에 다시 입력하세요`;updLock();return;}if(k==='back'){S.pinIn=S.pinIn.slice(0,-1);S.pinErr='';updLock();return;}if(S.pinIn.length>=4)return;S.pinIn+=k;S.pinErr='';updLock();
     if(S.pinIn.length===4){if(!S.settings.pin){S.pinIn='';S.pinErr='잠금 정보를 불러오는 중이에요. 잠시 뒤 다시 눌러주세요';updLock();return;}const h=await hashPin(S.pinIn,S.settings.pin.salt);if(h===S.settings.pin.hash){pinFails(0);S.locked=false;S.unlockedOnce=true;S.pinIn='';markActive();render();}else{const n=pinFails(1);S.pinIn='';S.pinErr=n>=5?`5번 틀렸어요. ${lockWait()}초 뒤에 다시 입력하세요`:`비밀번호가 달라요 (${n}/5)`;updLock();}}return;}
@@ -1248,10 +1280,11 @@ function startDb(){S.needSetup=false;S.db=makeFbDb(S.fs);let firstMs=null;
   S.db.doc('ledger/settings').onSnapshot(snap=>{const d=snap.exists?snap.data():{};S.settings=normalizeSettings(clone(d));GH.denied=false;
     if(firstMs===null){firstMs=S.settings.monthStart;S.label=curLabel();subscribePeriod();if(S.freshOpen&&S.tab==='list')S.sub=S.settings.firstSub==='cal'?'cal':'daily';}
     else if(firstMs!==S.settings.monthStart){firstMs=S.settings.monthStart;subscribePeriod();}
+    const wasWay=lockOn()?lockWay():'';try{if(S.settings.pat)localStorage.setItem('moneybook.patOn','1');else localStorage.removeItem('moneybook.patOn');}catch(e){}
     try{if(S.settings.pin)localStorage.setItem('moneybook.pinOn','1');else localStorage.removeItem('moneybook.pinOn');localStorage.setItem('moneybook.lockMin',String(S.settings.lockMin??1));}catch(e){}
     if(!S.settings.pin&&S.pinPending){S.locked=false;}S.pinPending=false;
     if(!S.settingsReady&&S.settings.pin&&!S.unlockedOnce)S.locked=true;
-    S.settingsReady=true;applyColors();if(!snap.metadata.fromCache)applyRecurring();render();},()=>render());
+    S.settingsReady=true;if(lockOn()&&wasWay&&wasWay!==lockWay()&&!S.pinIn){$('#lockRoot').innerHTML='';}applyColors();if(!snap.metadata.fromCache)applyRecurring();render();},()=>render());
   render();}
 function startAuth(){if(!window.firebase||!firebase.initializeApp){S.fbMissing=true;S.needSetup=true;render();return;}
   firebase.initializeApp(FB_CONFIG);const fs=firebase.firestore();try{fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});}catch(e){}S.fs=fs;

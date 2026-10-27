@@ -674,3 +674,14 @@ button.acc:active{background:var(--sunk)}
 .lkch button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;width:96px;height:110px;border-radius:20px;background:rgba(255,255,255,.85);color:var(--on-accent);font-size:16px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.12)}
 .lkch button:active{transform:scale(.95)}
 .lk-back{margin-top:10px;font:inherit;font-size:16px;font-weight:600;color:inherit;background:rgba(255,255,255,.22);padding:10px 18px;border-radius:999px}
+/* v40 앱 패턴 잠금 */
+.patpad{position:relative;width:min(270px,72vw);aspect-ratio:1;margin:18px auto 6px;touch-action:none;user-select:none;-webkit-user-select:none}
+.patsvg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.patsvg polyline{fill:none;stroke:currentColor;stroke-width:7;stroke-linecap:round;stroke-linejoin:round;opacity:.55}
+.patpad.bad .patsvg polyline{stroke:var(--exp);opacity:.8}
+.pd{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);place-items:center}
+.pd i{width:18px;height:18px;border-radius:50%;background:currentColor;opacity:.45;transition:transform .1s,opacity .1s}
+.pd i.on{opacity:1;transform:scale(1.5)}
+.patpad.bad .pd i.on{background:var(--exp)}
+.sheet .patpad{color:var(--accent-ink)}
+.bioc-b{display:flex;gap:6px;flex:none}

@@ -203,7 +203,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=53; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=54; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -699,7 +699,7 @@ const SHEETS={
   <div class="tagrow">${(f.tags||[]).map(g=>`<button class="tagc on" data-act="tagTog" data-k="${esc(g)}">#${esc(g)} ×</button>`).join('')}<button class="tagc" data-act="tagPick">+ 태그</button></div>${f.tagPick?`<div class="tagpick">${(S.settings.tags||[]).filter(g=>!(f.tags||[]).includes(g)).map(g=>`<button class="tagc" data-act="tagTog" data-k="${esc(g)}">#${esc(g)}</button>`).join('')}<span class="tagnew"><input class="in-t" id="f-tagnew" placeholder="새 태그" maxlength="20"><button class="btn sm" data-act="tagNewF">추가</button></span></div>`:''}
   ${edit?'':`<label class="chk"><input type="checkbox" id="f-fav" ${f.fav?'checked':''}> 자주 쓰는 내역에 추가</label>`}
   <div class="err" id="f-err">${esc(f.err)}</div>
-  ${f.panel?'':`<div class="acts">${edit?`<button class="btn danger ${f.confirmDel?'go':''}" data-act="delTx">${f.confirmDel?'정말 삭제':'삭제'}</button>`:''}<button class="btn pri" data-act="saveTx">저장하기</button>${edit?'':'<button class="btn cont" data-act="saveTx" data-k="more">계속</button>'}</div>`}</div>`;
+  ${f.panel?'':`${edit?`<div class="acts acts3"><button class="btn danger ${f.confirmDel?'go':''}" data-act="delTx">${f.confirmDel?'정말 삭제':'삭제'}</button><button class="btn" data-act="txCopy">복사</button><button class="btn" data-act="txFavAdd">자주사용</button></div>`:''}<div class="acts">${edit?'<button class="btn" data-act="close">닫기</button>':''}<button class="btn pri" data-act="saveTx">저장하기</button>${edit?'':'<button class="btn cont" data-act="saveTx" data-k="more">계속</button>'}</div>`}</div>`;
   if(f.panel)h+=`<div class="kp">${panelHtml(f)}</div>`;
   return h;},
 
@@ -944,6 +944,8 @@ const ACT={
  repSet(el){const f=S.form;const k=el.dataset.k;f.rep=FREQ[k]?k:'';f.inst=0;f.panel='';renderSheet();},
  repMode(el){const f=S.form;f.repMode=el.dataset.k;f.instStr=f.inst>1?String(f.inst):'';renderSheet();},
  instKey(el){const f=S.form;const k=el.dataset.k;let v=f.instStr||'';if(k==='back')v=v.slice(0,-1);else if(k==='C')v='';else if(k==='ok'){const n=parseInt(v,10)||0;if(n>1&&n<=60){f.inst=n;f.rep='';}else if(!n){f.inst=0;}else{toast('2~60개월로 적어주세요');return;}f.repMode='';f.panel='';renderSheet();return;}else if(v.length<2)v+=k;f.instStr=v;renderSheet();},
+ txCopy(){readForm();const f=S.form;if(!f||!f.orig)return;S.form=Object.assign({},f,{orig:null,id:undefined,created:undefined,auto:undefined,date:today(),confirmDel:false,err:'',panel:'',fav:false,inst:1,rep:''});renderSheet();toast('복사했어요. 날짜를 확인하고 저장하세요.');},
+ txFavAdd(){readForm();const f=S.form;const amount=calc(f.amountStr);if(!(amount>0)){toast('금액을 먼저 넣어주세요.');return;}const fav={type:f.type,amount,cat:f.type==='trf'?'':f.cat,sub:f.type==='trf'?'':(f.sub||''),acc:f.acc,to:f.type==='trf'?f.to:'',memo:(f.memo||'').trim()};const l=S.settings.favorites||[];if(l.some(x=>x.type===fav.type&&x.amount===fav.amount&&x.cat===fav.cat&&x.acc===fav.acc&&x.memo===fav.memo)){toast('이미 자주 쓰는 내역에 있어요.');return;}saveSettings({favorites:l.concat(fav).slice(-30)});toast('자주 쓰는 내역에 추가했어요.');},
  txFav(){readForm();if(!(S.settings.favorites||[]).length){toast('자주 쓰는 내역이 아직 없어요');return;}openSheet('favorites');},
  fsub(el){readForm();S.form.sub=S.form.sub===el.dataset.k?'':el.dataset.k;renderSheet();},
  sub(el){S.sub=el.dataset.k;S.selDay='';try{localStorage.setItem('moneybook.sub',S.sub);}catch(e){}if(S.sub==='month'&&!S.openMonth)S.openMonth=curLabel();window.scrollTo(0,0);render();},

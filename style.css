@@ -728,3 +728,6 @@ button.acc:active{background:var(--sunk)}
 @media (min-width:700px){
   .top{box-shadow:0 0 0 100vmax var(--surface);clip-path:inset(0 -100vmax)}
 }
+/* v54 수정 화면 하단 버튼 */
+.acts3{margin-bottom:8px}.acts3 .btn{flex:1}
+.acts3+.acts{margin-top:8px}

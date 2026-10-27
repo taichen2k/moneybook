@@ -11,7 +11,7 @@ const DEFAULTS={v:1,monthStart:1,
   subs:{exp:{'식비/생활용품':['식료품','간식','외식','음료'],'교통/차량':['대중교통','택시','주유','정비','렌트'],'패션/미용/문화':['의류','패션잡화','헤어/뷰티','세탁비'],
     '주거/통신':['관리비','공과금','통신비','월세'],'건강':['운동','다이어트','병원','약국'],'교육':['학비','학원비','교재비','육아'],'경조사/회비':['경조사비','회비','선물']},inc:{}},
   accounts:[{id:'cash',name:'현금',group:'현금',init:0},{id:'bank',name:'주거래 통장',group:'은행',init:0},{id:'card',name:'신용카드',group:'카드',init:0}],
-  budget:{total:0,cats:{}},favorites:[],recurring:[],months:{},pin:null,lockMin:1};
+  budget:{total:0,cats:{}},favorites:[],recurring:[],months:{},pin:null,lockMin:0};
 const TYPE_NAME={exp:'지출',inc:'수입',trf:'이체'};
 const DOW=['일','월','화','수','목','금','토'];
 
@@ -96,7 +96,7 @@ function dotsHtml(n,bad){return `<div class="pdots ${bad?'bad':''}">${[0,1,2,3].
 function updDraft(){const d=S.pinDraft;const box=document.querySelector('.pinbox .pdots');if(!d||!box){renderSheet();return;}box.outerHTML=dotsHtml(d.cur.length,!!d.err);const e=document.querySelector('.pin-e');if(e)e.textContent=d.err||'';}
 const lockOn=()=>!!(S.locked&&(S.settings.pin||S.pinPending));
 function markActive(){try{sessionStorage.setItem('moneybook.activeAt',String(Date.now()));}catch(e){}}
-function recentlyActive(){try{const a=+sessionStorage.getItem('moneybook.activeAt')||0;const lm=+(localStorage.getItem('moneybook.lockMin')??1);return a&&Date.now()-a<Math.max(lm*60000,15000);}catch(e){return false;}}
+function recentlyActive(){try{const a=+sessionStorage.getItem('moneybook.activeAt')||0;const lm=+(localStorage.getItem('moneybook.lockMin')??0);return a&&Date.now()-a<Math.max(lm*60000,15000);}catch(e){return false;}}
 // 내용이 같으면 다시 그리지 않아요 (누르는 도중 버튼이 바뀌어 터치가 씹히는 문제 방지)
 function setHtml(el,h){if(el._h!==h){el.innerHTML=h;el._h=h;}if(el.id==='top')el.hidden=!h;}
 const FPI='<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 11v3.5c0 2-.6 3.8-1.6 5.3M8.5 7.6A5 5 0 0 1 17 11v2.5M7 11a5 5 0 0 1 .2-1.4M15 14.2a14 14 0 0 1-1 5.1M9.6 11a2.4 2.4 0 0 1 4.8 0v1.6M4.6 15.5A11 11 0 0 0 5 11a7 7 0 0 1 12.4-4.4M19 11v1.4"/></svg>';
@@ -139,7 +139,7 @@ function normTx(t,ym){if(!t||typeof t!=='object')return null;const id=String(t.i
   if(t.auto)o.auto=true;if(t.src)o.src=str(t.src,30);return o;}
 function normalizeSettings(st){const d=clone(DEFAULTS);st=Object.assign(d,st||{});
   st.monthStart=Math.min(28,Math.max(1,parseInt(st.monthStart,10)||1));
-  st.lockMin=[0,1,5,10,30].includes(Number(st.lockMin))?Number(st.lockMin):1;
+  st.lockMin=[0,1,5,10,30].includes(Number(st.lockMin))?Number(st.lockMin):0;
   st.groupCustom=(Array.isArray(st.groupCustom)?st.groupCustom:[]).filter(g=>g&&/^g_[\w-]{1,40}$/.test(String(g.key||''))).map(g=>({key:String(g.key),name:str(g.name,20)||'그룹'}));const GK=GROUPS.concat(st.groupCustom.map(g=>g.key));
   const normAcc=a=>({id:String(a.id),name:str(a.name,30)||'이름 없음',group:(g=>g==='신용카드'?'카드':GK.includes(g)?g:'기타')(str(a.group,60)),inTotal:a.inTotal!==false,perfBase:['prev','cur','avg3'].includes(a.perfBase)?a.perfBase:'prev',hidden:!!a.hidden,memo:str(a.memo,200),phone:str(a.phone,40),smsKey:str(a.smsKey,60),app:str(a.app,40),pay:str(a.pay,60),cutDay:Math.min(31,Math.max(1,parseInt(a.cutDay,10)||1)),payDay:Math.min(31,Math.max(1,parseInt(a.payDay,10)||1)),perf:Math.max(0,Number(a.perf)||0),init:isFinite(Number(a.init))?Number(a.init):0});
   st.accounts=(Array.isArray(st.accounts)?st.accounts:[]).filter(a=>a&&typeof a==='object'&&/^[\w-]{1,60}$/.test(String(a.id||''))).map(normAcc);
@@ -192,7 +192,7 @@ function dbErr(e){const c=e&&e.code;if(c==='quota_exceeded')return '저장 공�
    각 기록에 수정 시각(_u)을 붙여, 두 폰이 동시에 고쳐도 최신 것으로 합쳐요. 토큰은 이 기기에만 저장돼요. */
 let deferredInstall=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;try{render();}catch(x){}});
-window.addEventListener('pagehide',()=>{if(!lockOn())markActive();});
+window.addEventListener('pagehide',()=>{if(!lockOn()&&(document.visibilityState==='visible'||(S.settings.lockMin??0)>0))markActive();});
 window.addEventListener('appinstalled',()=>{deferredInstall=null;try{toast('홈 화면에 설치했어요');render();}catch(x){}});
 const isStandalone=()=>(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
 const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -202,7 +202,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=43; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=44; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -774,7 +774,7 @@ const SHEETS={
     <b class="pin-t">${d.step===1?'새 비밀번호 4자리':'한 번 더 입력해 주세요'}</b><span class="pin-s">${d.step===1?'가계부를 열 때 쓸 번호예요':'확인을 위해 같은 번호를 눌러 주세요'}</span>
     ${dotsHtml(d.cur.length,!!d.err)}<div class="err pin-e">${esc(d.err||'')}</div>${padHtml()}</div>`;}
   return head('비밀번호 잠금')+`<p style="margin:0;font-size:14px;color:var(--muted)">가계부를 열 때 4자리 비밀번호를 물어봐요. 모든 휴대폰에 똑같이 적용돼요.</p>${st.pin?`<div class="card bioc"><div><b>패턴으로 열기</b><small class="muted">${st.pat?'켜져 있어요. 잠금 화면에서 \'패턴\'을 고르면 그린 패턴으로 열려요. 모든 휴대폰에 똑같이 적용돼요.':'티끌모아 전용 패턴(3×3 점)을 정해 두면 잠금 화면에서 패턴만 그려서 열 수 있어요.'}</small></div><span class="bioc-b">${st.pat?'<button class="btn sm" data-act="patStart">바꾸기</button><button class="btn sm" data-act="patOff">끄기</button>':'<button class="btn pri sm" data-act="patStart">켜기</button>'}</span></div>`:''}${st.pin?`<div class="card bioc"><div><b>지문으로 열기</b><small class="muted">${bioGet()?'이 기기에서 켜져 있어요. 잠금 화면에서 \'지문\'을 고르면 지문으로 열려요.':S.bioOk===false?'이 기기(브라우저)는 지문 확인을 지원하지 않아요.':'이 기기에서만 켜져요. 기기마다 한 번씩 켜 주세요.'}</small></div>${S.bioOk===false?'':`<button class="btn ${bioGet()?'':'pri'} sm" data-act="${bioGet()?'bioOff':'bioOn'}">${bioGet()?'끄기':'켜기'}</button>`}</div>`:''}
-  ${st.pin?`<div class="f"><label for="lockMin">다시 잠그기</label><select class="in-t" id="lockMin">${[[0,'화면을 벗어나면 바로'],[1,'1분 뒤'],[5,'5분 뒤'],[30,'30분 뒤']].map(([v,n])=>`<option value="${v}" ${(st.lockMin??1)===v?'selected':''}>${n}</option>`).join('')}</select></div>
+  ${st.pin?`<div class="f"><label for="lockMin">다시 잠그기</label><select class="in-t" id="lockMin">${[[0,'화면을 벗어나면 바로'],[1,'1분 뒤'],[5,'5분 뒤'],[30,'30분 뒤']].map(([v,n])=>`<option value="${v}" ${(st.lockMin??0)===v?'selected':''}>${n}</option>`).join('')}</select></div>
   <div class="acts"><button class="btn danger" data-act="pinOff">잠금 끄기</button><button class="btn" data-act="pinStart">비밀번호 바꾸기</button></div>`:
   `<div class="acts"><button class="btn pri" data-act="pinStart">비밀번호 설정</button></div>`}`;},
 install(){const ios=isIOS();const pc=isPC();return head('앱으로 설치')+`<div style="text-align:center;margin:4px 0 14px"><img src="logo.png" alt="티끌모아" style="width:100%;max-width:320px;border-radius:12px"></div>
@@ -1168,7 +1168,7 @@ const ACT={
   const fs=S.fs;const base='books/'+BOOK+'/';let n=0;
   try{for(const ym of allMonths()){const sn=await fs.collection(base+'tx_'+ym).get();for(let i=0;i<sn.docs.length;i+=400){const bt=fs.batch();sn.docs.slice(i,i+400).forEach(d=>bt.delete(d.ref));await bt.commit();n+=Math.min(400,sn.docs.length-i);}}
     if(mode==='all'){const m=await fs.collection(base+'memo').get();for(let i=0;i<m.docs.length;i+=400){const bt=fs.batch();m.docs.slice(i,i+400).forEach(d=>bt.delete(d.ref));await bt.commit();}
-      const keep={pin:S.settings.pin||null,lockMin:S.settings.lockMin??1};await fs.doc(base+'ledger/settings').set(Object.assign(clone(DEFAULTS),keep));}
+      const keep={pin:S.settings.pin||null,lockMin:S.settings.lockMin??0};await fs.doc(base+'ledger/settings').set(Object.assign(clone(DEFAULTS),keep));}
     else await fs.doc(base+'ledger/settings').update({months:{},recurring:(S.settings.recurring||[]).map(r=>Object.assign({},r,{last:today()}))});
     S.cache={};S.live={};S.resetMode='';closeSheet();toast((mode==='all'?'전체를':'가계부 내역 '+n+'건을')+' 초기화했어요');subscribePeriod();render();}catch(e){toast(dbErr(e));}},
  xlsIn(){const i=document.getElementById('xl-in');if(i)i.click();},
@@ -1242,9 +1242,9 @@ let updAt=0;async function checkUpdate(){if(Date.now()-updAt<60000||!navigator.o
   try{const t=await fetch('./sw.js?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'');const m=t.match(/moneybook-v(\d+)/);
     if(m&&+m[1]>APP_VERSION&&!S.sheet){try{if(sessionStorage.getItem('moneybook.updTo')===m[1])return;sessionStorage.setItem('moneybook.updTo',m[1]);}catch(e){}try{const r=await navigator.serviceWorker.getRegistration();if(r)await r.update();}catch(e){}if(!lockOn())markActive();location.reload();}}catch(e){}}
 setInterval(checkUpdate,30*60000);
-document.addEventListener('visibilitychange',()=>{if(document.hidden){S.hiddenAt=Date.now();if(S.settings.pin)document.documentElement.classList.add('veil');if(!lockOn())markActive();return;}
+document.addEventListener('visibilitychange',()=>{if(document.hidden){S.hiddenAt=Date.now();if(S.settings.pin)document.documentElement.classList.add('veil');if(!lockOn()){if((S.settings.lockMin??0)>0)markActive();else try{sessionStorage.removeItem('moneybook.activeAt');}catch(e){}}return;}
   document.documentElement.classList.remove('veil');checkUpdate();
-  if(S.settings.pin&&!S.locked&&S.hiddenAt&&Date.now()-S.hiddenAt>=(S.settings.lockMin??1)*60000){S.locked=true;S.lockWay='';$('#lockRoot').innerHTML='';S.pinIn='';S.pinErr='';closeSheet();render();}});
+  if(S.settings.pin&&!S.locked&&S.hiddenAt&&Date.now()-S.hiddenAt>=(S.settings.lockMin??0)*60000){S.locked=true;S.lockWay='';$('#lockRoot').innerHTML='';S.pinIn='';S.pinErr='';closeSheet();render();}});
 function applyColors(){const r=document.documentElement;r.style.removeProperty('--exp');r.style.removeProperty('--inc');if(S.settings.colorSet!=='B')return;const cs=getComputedStyle(r);const e=cs.getPropertyValue('--exp'),i=cs.getPropertyValue('--inc');r.style.setProperty('--exp',i);r.style.setProperty('--inc',e);}
 try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>applyColors());}catch(e){}
 /* ---------- boot ---------- */
@@ -1290,7 +1290,7 @@ async function restoreSnapshot(snap,onProg){const fs=S.fs;const base='books/'+BO
   else if(st){const cur=clone(S.settings);const accs=(st.accounts||[]).slice();for(const a of (cur.accounts||[]))if(!accs.some(x=>x.id===a.id))accs.push(a);
     const cats=clone(st.cats||DEFAULTS.cats);for(const ty of ['exp','inc'])for(const c of ((cur.cats||{})[ty]||[]))if(!cats[ty].includes(c))cats[ty].push(c);
     st=Object.assign({},st,{accounts:accs,cats,months:Object.assign({},cur.months||{},st.months||{},Object.fromEntries(Object.keys(snap.tx||{}).map(ym=>[ym,true])))});}
-  if(st){st=normalizeSettings(clone(st));st.pin=S.settings.pin||null;st.lockMin=S.settings.lockMin??1;}
+  if(st){st=normalizeSettings(clone(st));st.pin=S.settings.pin||null;st.lockMin=S.settings.lockMin??0;}
   const ops=[];if(st)ops.push([fs.doc(base+'ledger/settings'),JSON.parse(JSON.stringify(st))]);
   for(const ym in (snap.tx||{}))for(const t of snap.tx[ym]){const b=Object.assign({},t);delete b.id;ops.push([fs.collection(base+'tx_'+ym).doc(t.id),JSON.parse(JSON.stringify(b))]);}
   for(const m of (snap.memo||[])){const b=Object.assign({},m);delete b.ym;ops.push([fs.doc(base+'memo/'+m.ym),b]);}
@@ -1301,7 +1301,7 @@ function startDb(){S.needSetup=false;S.db=makeFbDb(S.fs);let firstMs=null;
     if(firstMs===null){firstMs=S.settings.monthStart;S.label=curLabel();subscribePeriod();if(S.freshOpen&&S.tab==='list')S.sub=S.settings.firstSub==='cal'?'cal':'daily';}
     else if(firstMs!==S.settings.monthStart){firstMs=S.settings.monthStart;subscribePeriod();}
     const wasWay=lockOn()?lockWay():'';try{if(S.settings.pat)localStorage.setItem('moneybook.patOn','1');else localStorage.removeItem('moneybook.patOn');}catch(e){}
-    try{if(S.settings.pin)localStorage.setItem('moneybook.pinOn','1');else localStorage.removeItem('moneybook.pinOn');localStorage.setItem('moneybook.lockMin',String(S.settings.lockMin??1));}catch(e){}
+    try{if(S.settings.pin)localStorage.setItem('moneybook.pinOn','1');else localStorage.removeItem('moneybook.pinOn');localStorage.setItem('moneybook.lockMin',String(S.settings.lockMin??0));}catch(e){}
     if(!S.settings.pin&&S.pinPending){S.locked=false;}S.pinPending=false;
     if(!S.settingsReady&&S.settings.pin&&!S.unlockedOnce)S.locked=true;
     S.settingsReady=true;if(lockOn()&&wasWay&&wasWay!==lockWay()&&!S.pinIn){$('#lockRoot').innerHTML='';}applyColors();if(!snap.metadata.fromCache)applyRecurring();render();},()=>render());

@@ -203,7 +203,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=56; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=57; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -691,7 +691,7 @@ const SHEETS={
   <div class="tseg">${['inc','exp','trf'].map(k=>`<button data-act="ftype" data-k="${k}" class="${f.type===k?'on '+k:''}">${TYPE_NAME[k]}</button>`).join('')}</div>
   <div class="frow"><span class="fl">날짜</span><label class="fv date num"><span>${dl}</span><input type="date" id="f-date" value="${esc(f.date)}" aria-label="날짜"></label>
     ${edit?'':`<button class="repb ${f.inst>1||f.rep?'on':''}" data-act="panel" data-k="rep"><svg viewBox="0 0 24 24"><path d="M17 3l3 3-3 3M4 11V9a3 3 0 0 1 3-3h13M7 21l-3-3 3-3M20 13v2a3 3 0 0 1-3 3H4"/></svg><small>${f.inst>1?f.inst+'개월 할부':f.rep&&FREQ[f.rep]?FREQ[f.rep]+' 반복':'반복/할부'}</small></button>`}</div>
-  <div class="frow ${f.panel==='amt'?'act':''}"><span class="fl">금액</span><button class="fv amtv num" data-act="panel" data-k="amt">${f.amountStr?fmtExpr(f.amountStr)+(ops&&!isNaN(val)?` <small>= ${won(val)}원</small>`:'원'):'<span class="ph">&nbsp;</span>'}</button>${f.type==='trf'?`<button class="feeb num ${f.panel==='fee'||calc(f.feeStr||'')>0?'on':''}" data-act="panel" data-k="fee">${calc(f.feeStr||'')>0?'수수료 '+won(calc(f.feeStr)):'수수료'}</button>`:''}</div>
+  <div class="frow ${f.panel==='amt'?'act':''}"><span class="fl">금액</span><button class="fv amtv num" data-act="panel" data-k="amt">${f.amountStr?(f.fresh==='amt'?'<span class="selv">':'<span>')+fmtExpr(f.amountStr)+'</span>'+(ops&&!isNaN(val)?` <small>= ${won(val)}원</small>`:'원'):'<span class="ph">&nbsp;</span>'}</button>${f.type==='trf'?`<button class="feeb num ${f.panel==='fee'||calc(f.feeStr||'')>0?'on':''}" data-act="panel" data-k="fee">${calc(f.feeStr||'')>0?'수수료 '+won(calc(f.feeStr)):'수수료'}</button>`:''}</div>
   ${f.type==='trf'?`<div class="swapw">${frow('출금','acc',f.acc?esc(accName(f.acc)):'')+frow('입금','to',f.to?esc(accName(f.to)):'')}<button class="swapb" data-act="swapAcc" aria-label="출금과 입금 바꾸기">↓↑</button></div>`:frow('분류','cat',catTxt)+frow('자산','acc',f.acc?esc(accName(f.acc)):'')}
   ${(S.settings.timeMode||'').startsWith('on')?`<div class="frow"><span class="fl">시간</span><input class="fv num" type="time" id="f-time" value="${esc((f.time||'').slice(0,5))}" aria-label="시간"></div>`:''}
   <div class="frow sugw"><span class="fl">내용</span><input class="fv" id="f-memo" placeholder="" value="${esc(f.memo)}" autocomplete="off" data-act="memoFocus"></div><div id="f-sug" class="sug" hidden></div>
@@ -699,7 +699,7 @@ const SHEETS={
   <div class="tagrow">${(f.tags||[]).map(g=>`<button class="tagc on" data-act="tagTog" data-k="${esc(g)}">#${esc(g)} ×</button>`).join('')}<button class="tagc" data-act="tagPick">+ 태그</button></div>${f.tagPick?`<div class="tagpick">${(S.settings.tags||[]).filter(g=>!(f.tags||[]).includes(g)).map(g=>`<button class="tagc" data-act="tagTog" data-k="${esc(g)}">#${esc(g)}</button>`).join('')}<span class="tagnew"><input class="in-t" id="f-tagnew" placeholder="새 태그" maxlength="20"><button class="btn sm" data-act="tagNewF">추가</button></span></div>`:''}
   ${edit?'':`<label class="chk"><input type="checkbox" id="f-fav" ${f.fav?'checked':''}> 자주 쓰는 내역에 추가</label>`}
   <div class="err" id="f-err">${esc(f.err)}</div>
-  ${f.panel?'':`${edit?`<div class="acts" id="f-save" ${txDirty(f)?'':'hidden'}><button class="btn pri" data-act="saveTx">저장하기</button></div><div class="acts acts3"><button class="btn danger ${f.confirmDel?'go':''}" data-act="delTx"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>${f.confirmDel?'정말 삭제':'삭제'}</button><button class="btn" data-act="txCopy"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>복사</button><button class="btn" data-act="txFavAdd"><svg viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>자주사용</button></div>${f.copyAsk?`<div class="cpov" data-act="copyX"></div><div class="cpw"><div class="cpbox" role="dialog"><b>복사하기</b><button class="${f.copyMode==='today'?'on':''}" data-act="copyMode" data-k="today">오늘 날짜로 복사${f.copyMode==='today'?'<i>✓</i>':''}</button><button class="${f.copyMode!=='today'?'on':''}" data-act="copyMode" data-k="orig">작성한 날짜로 복사${f.copyMode!=='today'?'<i>✓</i>':''}</button></div><button class="cpok" data-act="copyGo">확인</button></div>`:''}`:`<div class="acts"><button class="btn pri" data-act="saveTx">저장하기</button><button class="btn cont" data-act="saveTx" data-k="more">계속</button></div>`}`}</div>`;
+  ${f.panel?'':`${edit?`<div class="acts" id="f-save" ${txDirty(f)?'':'hidden'}><button class="btn pri" data-act="saveTx">저장하기</button></div><div class="acts acts3" id="f-tools" ${txDirty(f)?'hidden':''}><button class="btn danger ${f.confirmDel?'go':''}" data-act="delTx"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>${f.confirmDel?'정말 삭제':'삭제'}</button><button class="btn" data-act="txCopy"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>복사</button><button class="btn" data-act="txFavAdd"><svg viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>자주사용</button></div>${f.copyAsk?`<div class="cpov" data-act="copyX"></div><div class="cpw"><div class="cpbox" role="dialog"><b>복사하기</b><button class="${f.copyMode==='today'?'on':''}" data-act="copyMode" data-k="today">오늘 날짜로 복사${f.copyMode==='today'?'<i>✓</i>':''}</button><button class="${f.copyMode!=='today'?'on':''}" data-act="copyMode" data-k="orig">작성한 날짜로 복사${f.copyMode!=='today'?'<i>✓</i>':''}</button></div><button class="cpok" data-act="copyGo">확인</button></div>`:''}`:`<div class="acts"><button class="btn pri" data-act="saveTx">저장하기</button><button class="btn cont" data-act="saveTx" data-k="more">계속</button></div>`}`}</div>`;
   if(f.panel)h+=`<div class="kp">${panelHtml(f)}</div>`;
   return h;},
 
@@ -904,7 +904,7 @@ async function doExport(scope,share){if(S.exporting)return;S.exporting=true;toas
 /* ---------- actions ---------- */
 function txSig(f){return JSON.stringify([f.type,f.date,calc(f.amountStr||''),f.cat||'',f.sub||'',f.acc||'',f.type==='trf'?f.to||'':'',(f.memo||'').trim(),(f.note||'').trim(),(f.time||'').slice(0,5),(f.tags||[]).join(',')]);}
 function txDirty(f){return !!(f&&f.orig&&f.snap&&txSig(f)!==f.snap);}
-function updDirty(){const f=S.form;if(!f||!f.orig)return;readForm();const b=document.getElementById('f-save');if(b)b.hidden=!txDirty(f);}
+function updDirty(){const f=S.form;if(!f||!f.orig)return;readForm();const b=document.getElementById('f-save');const d=txDirty(f);if(b)b.hidden=!d;const t=document.getElementById('f-tools');if(t)t.hidden=d;}
 function readForm(){const f=S.form;if(!f)return;const g=id=>document.getElementById(id);
   if(g('f-amt'))f.amountStr=g('f-amt').value;if(g('f-date')&&okDate(g('f-date').value))f.date=g('f-date').value;if(g('f-acc'))f.acc=g('f-acc').value;
   if(g('f-to'))f.to=g('f-to').value;if(g('f-time'))f.time=g('f-time').value;if(g('f-memo'))f.memo=g('f-memo').value;if(g('f-note'))f.note=g('f-note').value;if(g('f-fav'))f.fav=g('f-fav').checked;}
@@ -925,7 +925,7 @@ const ACT={
  ovClose(el,e){if(e.target===el&&downOnOv===el)closeSheet();},
  ftype(el){readForm();const f=S.form;f.type=el.dataset.k;f.sub='';f.subPick=false;if(f.panel==='cat'&&f.type==='trf')f.panel='acc';if(f.type!=='trf'&&!(S.settings.cats[f.type]||[]).includes(f.cat))f.cat='';renderSheet();},
  fcat(el){readForm();if(S.form.cat!==el.dataset.k)S.form.sub='';S.form.cat=el.dataset.k;renderSheet();},
- panel(el){readForm();const k=el.dataset.k;const f=S.form;f.panel=(f.panel===k||!k)?'':k;f.subPick=false;if(document.activeElement)document.activeElement.blur();renderSheet();},
+ panel(el){readForm();const k=el.dataset.k;const f=S.form;f.panel=(f.panel===k||!k)?'':k;f.fresh=(f.panel==='amt'&&f.amountStr)||(f.panel==='fee'&&f.feeStr)?f.panel:'';f.subPick=false;if(document.activeElement)document.activeElement.blur();renderSheet();},
  tagPick(){readForm();S.form.tagPick=!S.form.tagPick;S.form.panel='';renderSheet();},
  tagTog(el){readForm();const f=S.form;const g=el.dataset.k;const l=f.tags||[];f.tags=l.includes(g)?l.filter(x=>x!==g):l.concat(g);renderSheet();},
  tagNewF(){readForm();const v=((document.getElementById('f-tagnew')||{}).value||'').trim().replace(/^#/,'').slice(0,20);if(!v||BADK.has(v))return;const f=S.form;if(!(f.tags||[]).includes(v))f.tags=(f.tags||[]).concat(v);if(!(S.settings.tags||[]).includes(v))saveSettings({tags:(S.settings.tags||[]).concat(v)});renderSheet();},
@@ -933,7 +933,8 @@ const ACT={
  sugClose(){const b=document.getElementById('f-sug');if(b){b.hidden=true;b.innerHTML='';}S.sugOff=true;},
  sugPick(el){const t=(S._sug||[])[+el.dataset.i];if(!t||!S.form)return;readForm();const f=S.form;f.memo=t.memo;if(t.type==='trf'){f.acc=t.acc;f.to=t.to;}else{f.cat=t.cat||'';f.sub=t.sub||'';if(t.acc&&S.settings.accounts.some(a=>a.id===t.acc))f.acc=t.acc;}if(!f.amountStr)f.amountStr=String(t.amount);if(!f.note&&t.note)f.note=t.note;f.panel='';renderSheet();},
  memoFocus(){if(S.form&&S.form.panel){readForm();S.form.panel='';renderSheet();const m=document.getElementById('f-memo');if(m){m.focus();m.setSelectionRange(m.value.length,m.value.length);}}},
- kp(el){const f=S.form;const k=el.dataset.k;const tk=f.panel==='fee'?'feeStr':'amountStr';let a=f[tk]||'';
+ kp(el){const f=S.form;const k=el.dataset.k;const tk=f.panel==='fee'?'feeStr':'amountStr';let a=f[tk]||'';const fr=f.fresh&&f.fresh===f.panel;f.fresh='';
+  if(fr&&!/^[+−×÷]$/.test(k)&&k!=='done'&&k!=='calc')a='';
   if(k==='back')a=a.slice(0,-1);else if(k==='calc'){f.calcOn=!f.calcOn;}
   else if(k==='done'){const v=calc(a);if(a&&!isNaN(v))a=String(v);f[tk]=a;f.calcOn=false;f.panel=tk==='feeStr'?'':f.type==='trf'?(f.acc?(f.to?'':'to'):'acc'):(f.cat?(f.acc?'':'acc'):'cat');renderSheet();return;}
   else if(/^[+−×÷]$/.test(k)){if(!a)return;if(/[+−×÷]$/.test(a))a=a.slice(0,-1);a+=k;}

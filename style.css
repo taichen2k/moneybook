@@ -743,3 +743,6 @@ button.acc:active{background:var(--sunk)}
 .cpbox button+button{border-top:1px solid var(--line)}.cpbox button.on{color:var(--exp,#e35d4a)}.cpbox i{font-style:normal}
 .cpok{padding:15px;font-size:16px;font-weight:700;border:0;color:var(--text)}
 html,body{overflow-x:clip}
+.acts3 .btn{white-space:nowrap;padding-left:4px;padding-right:4px;gap:4px;min-width:0}.acts3 .btn svg{width:18px;height:18px}
+.acts3 .btn{font-size:min(1em,4.2vw)}#f-tools[hidden]{display:none}
+.selv{background:rgba(234,161,59,.35);border-radius:3px}

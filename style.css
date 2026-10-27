@@ -514,3 +514,20 @@ button.acc:active{background:var(--sunk)}
 .ali.sel{color:var(--exp)}.ali .chk{font-style:normal;color:var(--exp);font-size:18px}
 .adwarn{padding:8px 14px 12px 52px;font-size:12px;color:var(--muted);background:var(--surface)}
 .ordbtn{display:flex;gap:4px}.ordbtn .x{border:1px solid var(--line);border-radius:10px;font-size:15px;color:var(--ink)}.ordbtn .x:disabled{opacity:.3}
+/* 자산추가 화면 (v28) */
+.aebody{padding:6px 2px 20px}
+.frow.ae{grid-template-columns:84px 1fr}
+.frow.ae>.fv{grid-column:2/3}
+.frow.ae .fl small{font-size:14px}
+.frow.ae select.fv{appearance:none;-webkit-appearance:none;color:var(--ink)}
+.aenote{margin:8px 0 4px 92px;font-size:13px;line-height:1.55;color:var(--muted)}
+.aesep{height:10px;margin:14px -20px 4px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.aecy{margin:14px 0 4px;border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.aecy div{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.aecy span{color:var(--muted);font-size:15px}.aecy b{font-weight:500;font-size:14px}
+.aeb .acts{margin-top:18px}
+.gdlg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:61;width:min(340px,88vw);max-height:84vh;overflow:auto;background:var(--surface);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.25);display:flex;flex-direction:column}
+.gdlg h3{margin:0;padding:20px 22px 14px;font-size:18px;border-bottom:1px solid var(--line)}
+.gdlg button{padding:15px 22px;text-align:left;font-size:16px;color:var(--ink);border-bottom:1px solid var(--line)}
+.gdlg button.on{color:var(--accent-ink);font-weight:700}
+.gdlg-ov{position:fixed;inset:0;z-index:60;background:rgba(10,8,4,.35)}

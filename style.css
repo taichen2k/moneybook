@@ -687,7 +687,7 @@ button.acc:active{background:var(--sunk)}
 .bioc-b{display:flex;gap:6px;flex:none}
 /* v43 잠금 화면이 작은 화면에도 한 번에 들어오게 (화면 높이에 맞춰 크기 조절) */
 .lock{gap:clamp(6px,1.8vh,18px);padding:max(12px,env(safe-area-inset-top)) 16px max(12px,env(safe-area-inset-bottom));overflow:hidden}
-.lklogo{width:clamp(44px,8vh,72px);height:clamp(44px,8vh,72px);border-radius:18px;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.lklogo{width:clamp(60px,11vh,96px);height:clamp(60px,11vh,96px);border-radius:18px;box-shadow:0 4px 14px rgba(0,0,0,.18)}
 .lock h2{font-size:clamp(18px,2.8vh,22px)}
 .lock .pad{grid-template-columns:repeat(3,clamp(54px,9vh,76px));gap:clamp(8px,1.6vh,14px) clamp(16px,5vw,22px)}
 .lock .pad button{width:clamp(54px,9vh,76px);height:clamp(54px,9vh,76px);font-size:clamp(22px,3.4vh,28px)}

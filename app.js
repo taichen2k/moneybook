@@ -203,7 +203,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=60; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=61; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -587,7 +587,8 @@ function renderSheet(){if(!S.sheet){closeSheet();return;}const fn=SHEETS[S.sheet
   const sc=$('.sheet')?$('.sheet').scrollTop:0;
   const full=['tx','search','favorites','filter','accEdit'].includes(S.sheet);const sc2=$('.txb')?$('.txb').scrollTop:0;const sc3=$('.sres')?$('.sres').scrollTop:0;
   $('#sheetRoot').innerHTML=`<div class="ov ${full?'full':''}" data-act="ovClose"><div class="sheet ${full?'full':''}" role="dialog" aria-modal="true">${(full?'':'<div class="grab"></div>')+fn()}</div></div>`;
-  const sh=$('.sheet');if(sh)sh.scrollTop=sc;const tb=$('.txb');if(tb)tb.scrollTop=sc2;const sr=$('.sres');if(sr)sr.scrollTop=sc3;}
+  const sh=$('.sheet');if(sh)sh.scrollTop=sc;const tb=$('.txb');if(tb)tb.scrollTop=sc2;const sr=$('.sres');if(sr)sr.scrollTop=sc3;
+  if(S.sheet==='tx'&&S.form&&tb){const pn=S.form.panel||'';if(pn!==S._pn){S._pn=pn;if(['cat','acc','to'].includes(pn)){const am=tb.querySelector('.amtv');const r=am&&am.closest('.frow');if(r)tb.scrollTop=Math.max(0,r.offsetTop-tb.offsetTop-6);}else if(!pn)tb.scrollTop=0;}}else S._pn=null;}
 function head(t,extra){return `<div class="sh-h"><h2>${t}</h2>${extra||''}<button class="x" data-act="close" aria-label="닫기">×</button></div>`;}
 function accOptions(sel){return GRP().map(g=>{const a=S.settings.accounts.filter(x=>(x.group||'기타')===g&&((!x.hidden&&GVIS().includes(g))||x.id===sel));return a.length?`<optgroup label="${esc(gName(g))}">${a.map(x=>`<option value="${esc(x.id)}" ${x.id===sel?'selected':''}>${esc(x.name)}</option>`).join('')}</optgroup>`:'';}).join('');}
 function recLabel(x){const f=x.freq||'monthly';if(f==='monthly')return '매월 '+(+String(x.start||'').slice(8)||x.day||1)+'일';if(f==='yearly')return '매년 '+(+String(x.start).slice(5,7))+'월 '+(+String(x.start).slice(8))+'일';if(['weekly','w2','w4'].includes(f))return FREQ[f]+' '+DOW[dowOf(x.start)]+'요일';return FREQ[f]||'반복';}
@@ -686,7 +687,7 @@ const SHEETS={
   const [yy,mm,dd]=f.date.split('-');const dl=esc(`${yy}. ${mm}. ${dd} (${DOW[dowOf(f.date)]||''})`);
   const catTxt=f.cat?esc(f.cat)+(f.sub?' <span class="muted">› '+esc(f.sub)+'</span>':''):'';
   const frow=(lab,k,txt)=>`<div class="frow ${f.panel===k?'act':''}"><span class="fl">${lab}</span><button class="fv" data-act="panel" data-k="${k}">${txt||'<span class="ph">선택</span>'}</button></div>`;
-  let h=`<div class="txb t-${okType(f.type)}"><div class="txh"><button class="x" data-act="close" aria-label="닫기">←</button><h2>${edit?'내역 수정':TYPE_NAME[f.type]}</h2>
+  let h=`<div class="txb t-${okType(f.type)} ${['cat','acc','to'].includes(f.panel)?'pan':''}"><div class="txh"><button class="x" data-act="close" aria-label="닫기">←</button><h2>${edit?'내역 수정':TYPE_NAME[f.type]}</h2>
     ${edit?'':`<button class="x hx" data-act="open" data-k="sms" aria-label="문자 붙여넣기">${HICON.sms}</button><button class="x hx" data-act="txFav" aria-label="자주 쓰는 내역">${HICON.fav}</button>`}</div>
   <div class="tseg">${['inc','exp','trf'].map(k=>`<button data-act="ftype" data-k="${k}" class="${f.type===k?'on '+k:''}">${TYPE_NAME[k]}</button>`).join('')}</div>
   <div class="frow"><span class="fl">날짜</span><label class="fv date num"><span>${dl}</span><input type="date" id="f-date" value="${esc(f.date)}" aria-label="날짜"></label>

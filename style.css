@@ -750,3 +750,5 @@ html,body{overflow-x:clip}
 .ainfo{padding:0;overflow:hidden}.ainfo-h{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
 .ainfo-h b{font-size:16px}.vchip{background:var(--sunk);border-radius:999px;padding:3px 10px;font-size:13px;font-weight:600}
 .ainfo p{margin:0;padding:14px 16px;font-size:14px;color:var(--muted)}
+/* v61 패널 열면 입력칸 위로 */
+.txb.pan{padding-bottom:45vh}.txb{position:relative}

@@ -203,7 +203,7 @@ const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platfor
 const FB_CONFIG={apiKey:"AIzaSyBPSKlEh4SXS_-7w4LwvGrLGUSWGCZSPxw",authDomain:"moneybook-926a4.firebaseapp.com",projectId:"moneybook-926a4",
   storageBucket:"moneybook-926a4.firebasestorage.app",messagingSenderId:"630259263268",appId:"1:630259263268:web:8ba3b8dee9df9dfe5af5b1"};
 const BOOK='main';
-const APP_VERSION=61; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
+const APP_VERSION=62; // 판 올릴 때마다 1씩 올림 (index.html의 ?v=, sw.js의 CACHE도 같은 숫자)
 function footHtml(){return `<footer class="foot"><p>티끌모아 자료는 암호화되어 저장됩니다.</p><p>© 2026 티제이컴퍼니. All rights reserved. · v${APP_VERSION}</p></footer>`;}
 const GH={err:'',lastOk:0,denied:false};
 function ghErr(m){if(GH.err!==(m||'')){GH.err=m||'';try{render();}catch(e){}}if(!m)GH.lastOk=Date.now();}
@@ -327,7 +327,7 @@ function fBar(){if(!filterOn())return '';const F=S.filter;const n=F.inc.length+F
 function yearTx(y){return monthsBetween(y+'-01',(y+1)+'-01').flatMap(txOf).filter(t=>{const p0=period(y+'-01'),p1=period((y+1)+'-01');return t.date>=p0.start&&t.date<p1.start;});}
 
 function renderView(){const v=$('#view');
-  if(S.needSetup){v.innerHTML=setupHtml();return;}
+  if(S.needSetup){v.innerHTML=setupHtml();gsiMount();return;}
   if(S.user&&GH.denied&&!S.settingsReady){v.innerHTML=deniedHtml();return;}
   if(!S.db){return;}
   if(S.tab==='list'&&S.sub==='memo'&&document.activeElement&&document.activeElement.id==='memo-text')return;
@@ -1274,11 +1274,20 @@ const isPC=()=>!/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)&&!(
 function instBanner(){if(isStandalone())return '';try{if(localStorage.getItem('moneybook.instHide')===today())return '';}catch(e){}
   return `<div class="ibar"><img src="logo-mark.svg" alt="" width="40" height="40"><div><b>티끌모아 앱 설치</b><span>${isPC()?'PC 바탕화면·작업표시줄에서':'홈 화면 아이콘으로'} 바로 열려요</span></div><button class="btn pri" data-act="install">설치</button><button class="x" data-act="instHide" aria-label="오늘 그만 보기">×</button></div>`;}
 const GICON='<svg viewBox="0 0 48 48" width="22" height="22" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
+// 구글 공식 로그인 버튼: 설치한 앱에서도 다른 창을 거치지 않고 로그인돼요
+const GSI_ID='630259263268-ccdnoqsvuiptng787etcth81q54n6nhc.apps.googleusercontent.com';let GSI=0;
+function gsiLoad(){if(GSI)return;GSI=1;const sc=document.createElement('script');sc.src='https://accounts.google.com/gsi/client';sc.async=true;
+  sc.onload=()=>{try{google.accounts.id.initialize({client_id:GSI_ID,callback:gsiCb,use_fedcm_for_button:true,use_fedcm_for_prompt:true,itp_support:true,auto_select:false});GSI=2;}catch(e){GSI=-1;}if(S.needSetup)render();};
+  sc.onerror=()=>{GSI=-1;if(S.needSetup)render();};document.head.appendChild(sc);setTimeout(()=>{if(GSI===1){GSI=-1;if(S.needSetup)render();}},8000);}
+function gsiMount(){if(!GSI)gsiLoad();const box=document.getElementById('gsi-btn');if(!box||GSI!==2||box.childElementCount)return;
+  try{google.accounts.id.renderButton(box,{type:'standard',theme:'outline',size:'large',shape:'pill',text:'signin_with',logo_alignment:'center',locale:'ko',width:Math.max(200,Math.min(400,box.clientWidth||320))});}catch(e){}}
+async function gsiCb(r){if(!r||!r.credential||!window.firebase)return;S.loginBusy=true;S.loginErr='';render();
+  try{await firebase.auth().signInWithCredential(firebase.auth.GoogleAuthProvider.credential(r.credential));}catch(e){S.loginErr=authErr(e);}S.loginBusy=false;render();}
 function setupHtml(){if(S.fbMissing)return `<div class="notice"><b>로그인 도구를 불러오지 못했어요.</b><br>인터넷 연결을 확인한 뒤 다시 열어주세요.</div>`;
   return instBanner()+`<div class="setup-logo"><img src="logo.png" alt="티끌모아"></div><div class="card setup"><h3>구글로 로그인</h3>
   <p class="muted">로그인하면 휴대폰과 PC 어디서든 같은 가계부를 써요. 기기마다 처음 한 번만 하면 돼요.</p>
-  <button class="btn gbtn wide2" data-act="login" ${S.loginBusy?'disabled':''}>${GICON}<span>${S.loginBusy?'로그인 중…':'구글 계정으로 로그인'}</span></button>
-  <div class="err">${esc(S.loginErr||'')}</div></div>`+footHtml();}
+  ${GSI===2?`<div id="gsi-btn" class="gsi"></div><button class="lnk login-alt" data-act="login" ${S.loginBusy?'disabled':''}>로그인 창이 안 뜨면 여기를 누르세요.</button>`:`<button class="btn gbtn wide2" data-act="login" ${S.loginBusy?'disabled':''}>${GICON}<span>${S.loginBusy?'로그인 중…':'구글 계정으로 로그인'}</span></button>`}
+  ${S.loginBusy&&GSI===2?'<p class="muted" style="text-align:center;margin:8px 0 0">로그인 중…</p>':''}<div class="err">${esc(S.loginErr||'')}</div></div>`+footHtml();}
 function deniedHtml(){return `<div class="card setup"><h3>들어올 수 없는 계정이에요</h3><p class="muted"><b>${esc((S.user&&S.user.email)||'')}</b> 계정은 이 가계부에 허용되지 않았어요. 가계부 주인 계정으로 다시 로그인해 주세요.</p>
   <button class="btn pri wide2" data-act="logoutNow">다른 계정으로 로그인</button></div>`;}
 async function fullSnapshot(){const ms=allMonths();await needAll();const st0=clone(S.settings);delete st0.pin;delete st0.pat;const snap={app:'moneybook',v:1,at:new Date().toISOString(),settings:st0,tx:{},memo:[]};

@@ -752,3 +752,6 @@ html,body{overflow-x:clip}
 .ainfo p{margin:0;padding:14px 16px;font-size:14px;color:var(--muted)}
 /* v61 패널 열면 입력칸 위로 */
 .txb.pan{padding-bottom:45vh}.txb{position:relative}
+/* v62 구글 공식 로그인 버튼 */
+.gsi{display:flex;justify-content:center;min-height:44px;margin-top:6px}
+.login-alt{display:block;margin:14px auto 0;background:none;border:0;color:var(--muted);font-size:14px;text-decoration:underline}
